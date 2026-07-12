@@ -36,16 +36,25 @@ export default function AllocationsPage() {
 
   // Mock data for dropdowns (ideally fetched from APIs)
   const [availableAssets, setAvailableAssets] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<any[]>([
-    { id: "u1", name: "Alice Smith" },
-    { id: "u2", name: "Bob Jones" },
-    { id: "u3", name: "Charlie Brown" },
-  ]);
+  const [employees, setEmployees] = useState<any[]>([]);
 
   useEffect(() => {
     fetchAllocations();
     fetchAvailableAssets();
+    fetchEmployees();
   }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/employees`);
+      if (res.ok) {
+        const data = await res.json();
+        setEmployees(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch employees", error);
+    }
+  };
 
   const fetchAllocations = async () => {
     try {
