@@ -16,6 +16,7 @@ type AssetDetail = {
   name: string;
   tag: string;
   category_name: string | null;
+  department_name: string | null;
   status: string;
   serial_number: string;
   purchase_date: string | null;
@@ -96,6 +97,10 @@ export default function AssetDetailPage() {
             <div>
               <p className="text-sm font-medium text-muted-foreground">Category</p>
               <p>{asset.category_name || "Uncategorized"}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Department</p>
+              <p>{asset.department_name || "No Department Assigned"}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Serial Number</p>

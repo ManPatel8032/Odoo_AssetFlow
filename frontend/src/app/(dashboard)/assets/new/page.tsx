@@ -9,8 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { fetchWithAuth } from "@/lib/api";
 
 type Category = {
+  id: string;
+  name: string;
+};
+
+type Department = {
   id: string;
   name: string;
 };
@@ -20,28 +26,31 @@ export default function NewAssetPage() {
   const { toast } = useToast();
   
   const [categories, setCategories] = useState<Category[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("none");
+  const [departmentId, setDepartmentId] = useState("none");
   const [serialNumber, setSerialNumber] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
   const [cost, setCost] = useState("");
 
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/categories`);
-        if (res.ok) {
-          const data = await res.json();
-          setCategories(data);
-        }
+        const [catRes, deptRes] = await Promise.all([
+          fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/categories`),
+          fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/departments`)
+        ]);
+        if (catRes.ok) setCategories(await catRes.json());
+        if (deptRes.ok) setDepartments(await deptRes.json());
       } catch (err) {
-        console.error("Failed to fetch categories", err);
+        console.error("Failed to fetch categories or departments", err);
       }
     };
-    fetchCategories();
+    fetchData();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -59,6 +68,7 @@ export default function NewAssetPage() {
         body: JSON.stringify({
           name,
           category_id: categoryId === "none" ? null : categoryId,
+          department_id: departmentId === "none" ? null : departmentId,
           serial_number: serialNumber,
           purchase_date: purchaseDate || null,
           cost: cost ? parseFloat(cost) : null,
@@ -158,6 +168,21 @@ export default function NewAssetPage() {
                   placeholder="0.00"
                 />
               </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Department</label>
+                <Select value={departmentId} onValueChange={setDepartmentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Department</SelectItem>
+                    {departments.map(dept => (
+                      <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
           </CardContent>
@@ -175,4 +200,3 @@ export default function NewAssetPage() {
   );
 }
 
-import { fetchWithAuth } from "@/lib/api";

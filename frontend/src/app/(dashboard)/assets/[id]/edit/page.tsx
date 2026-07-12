@@ -16,36 +16,44 @@ type Category = {
   name: string;
 };
 
+type Department = {
+  id: string;
+  name: string;
+};
+
 export default function EditAssetPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
   
   const [categories, setCategories] = useState<Category[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Form State
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("none");
+  const [departmentId, setDepartmentId] = useState("none");
   const [serialNumber, setSerialNumber] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
   const [cost, setCost] = useState("");
   const [status, setStatus] = useState("available");
 
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/categories`);
-        if (res.ok) {
-          const data = await res.json();
-          setCategories(data);
-        }
+        const [catRes, deptRes] = await Promise.all([
+          fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/categories`),
+          fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/departments`)
+        ]);
+        if (catRes.ok) setCategories(await catRes.json());
+        if (deptRes.ok) setDepartments(await deptRes.json());
       } catch (err) {
-        console.error("Failed to fetch categories", err);
+        console.error("Failed to fetch categories or departments", err);
       }
     };
-    fetchCategories();
+    fetchData();
 
     if (params.id) {
       fetchAsset(params.id as string);
@@ -60,6 +68,7 @@ export default function EditAssetPage() {
       const data = await res.json();
       setName(data.name || "");
       setCategoryId(data.category_id || "none");
+      setDepartmentId(data.department_id || "none");
       setSerialNumber(data.serial_number || "");
       if (data.purchase_date) {
         setPurchaseDate(new Date(data.purchase_date).toISOString().split('T')[0]);
@@ -89,6 +98,7 @@ export default function EditAssetPage() {
         body: JSON.stringify({
           name,
           category_id: categoryId === "none" ? null : categoryId,
+          department_id: departmentId === "none" ? null : departmentId,
           serial_number: serialNumber,
           purchase_date: purchaseDate || null,
           cost: cost ? parseFloat(cost) : null,
@@ -209,6 +219,23 @@ export default function EditAssetPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Department</label>
+                <Select value={departmentId} onValueChange={setDepartmentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Department</SelectItem>
+                    {departments.map(dept => (
+                      <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
           </CardContent>
           <CardFooter className="flex justify-end space-x-2 border-t pt-4">
             <Link href="/assets">
@@ -223,3 +250,4 @@ export default function EditAssetPage() {
     </div>
   );
 }
+

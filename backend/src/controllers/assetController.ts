@@ -2,15 +2,29 @@ import { Request, Response } from 'express';
 import db from '../config/db';
 
 // ─── GET /api/assets ────────────────────────────────────────────────────────
-// Fetches all assets with optional filtering by status, category, and search term.
+// Fetches all assets with optional filtering by status, category, department, and search term.
 export const getAssets = async (req: Request, res: Response) => {
   try {
-    const { status, category_id, search } = req.query;
+    const { status, category_id, department_id, search } = req.query;
 
     let query = `
-      SELECT a.*, c.name AS category_name
+      SELECT a.*, c.name AS category_name, dept.name AS department_name,
+             CASE 
+               WHEN a.status = 'allocated' THEN (
+                 SELECT d.name 
+                 FROM allocations al
+                 JOIN profiles p ON al.employee_id = p.id
+                 JOIN departments d ON p.department_id = d.id
+                 WHERE al.asset_id = a.id AND al.returned_at IS NULL
+                 ORDER BY al.allocated_at DESC
+                 LIMIT 1
+               )
+               WHEN a.status = 'maintenance' THEN 'Maintenance Room'
+               ELSE 'Warehouse'
+             END AS location
       FROM assets a
       LEFT JOIN categories c ON a.category_id = c.id
+      LEFT JOIN departments dept ON a.department_id = dept.id
     `;
     const conditions: string[] = [];
     const params: (string | undefined)[] = [];
@@ -26,8 +40,23 @@ export const getAssets = async (req: Request, res: Response) => {
       params.push(category_id);
     }
 
+    if (department_id && typeof department_id === 'string') {
+      conditions.push(`(
+        a.department_id = $${paramIndex} OR (
+          SELECT p.department_id 
+          FROM allocations al
+          JOIN profiles p ON al.employee_id = p.id
+          WHERE al.asset_id = a.id AND al.returned_at IS NULL
+          ORDER BY al.allocated_at DESC
+          LIMIT 1
+        ) = $${paramIndex}
+      )`);
+      params.push(department_id);
+      paramIndex++;
+    }
+
     if (search && typeof search === 'string') {
-      conditions.push(`(a.name ILIKE $${paramIndex} OR a.tag ILIKE $${paramIndex})`);
+      conditions.push(`(a.name ILIKE $${paramIndex} OR a.tag ILIKE $${paramIndex} OR a.serial_number ILIKE $${paramIndex})`);
       params.push(`%${search}%`);
       paramIndex++;
     }
@@ -54,9 +83,10 @@ export const getAssetById = async (req: Request, res: Response) => {
 
     // 1. Fetch the asset itself
     const assetResult = await db.query(
-      `SELECT a.*, c.name AS category_name
+      `SELECT a.*, c.name AS category_name, d.name AS department_name
        FROM assets a
        LEFT JOIN categories c ON a.category_id = c.id
+       LEFT JOIN departments d ON a.department_id = d.id
        WHERE a.id = $1`,
       [id]
     );
@@ -117,7 +147,7 @@ export const createAsset = async (req: Request, res: Response) => {
   const client = await db.connect();
 
   try {
-    const { name, category_id, serial_number, purchase_date, cost } = req.body;
+    const { name, category_id, department_id, serial_number, purchase_date, cost } = req.body;
 
     // Validate required fields
     if (!name || !serial_number) {
@@ -148,10 +178,10 @@ export const createAsset = async (req: Request, res: Response) => {
 
     // 3. Insert the new asset
     const insertResult = await client.query(
-      `INSERT INTO assets (name, tag, category_id, status, serial_number, purchase_date, cost)
-       VALUES ($1, $2, $3, 'available', $4, $5, $6)
+      `INSERT INTO assets (name, tag, category_id, department_id, status, serial_number, purchase_date, cost)
+       VALUES ($1, $2, $3, $4, 'available', $5, $6, $7)
        RETURNING *`,
-      [name, tag, category_id || null, serial_number, purchase_date || null, cost || null]
+      [name, tag, category_id || null, department_id || null, serial_number, purchase_date || null, cost || null]
     );
 
     await client.query('COMMIT');
@@ -167,11 +197,11 @@ export const createAsset = async (req: Request, res: Response) => {
 };
 
 // ─── PUT /api/assets/:id ────────────────────────────────────────────────────
-// Updates an existing asset's editable fields.
+// Updates an existing asset's editable fields dynamically.
 export const updateAsset = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, category_id, serial_number, purchase_date, cost, status } = req.body;
+    const { name, category_id, department_id, serial_number, purchase_date, cost, status } = req.body;
 
     // Verify asset exists
     const existing = await db.query('SELECT id FROM assets WHERE id = $1', [id]);
@@ -180,18 +210,26 @@ export const updateAsset = async (req: Request, res: Response) => {
       return;
     }
 
-    const result = await db.query(
-      `UPDATE assets
-       SET name = COALESCE($1, name),
-           category_id = COALESCE($2, category_id),
-           serial_number = COALESCE($3, serial_number),
-           purchase_date = COALESCE($4, purchase_date),
-           cost = COALESCE($5, cost),
-           status = COALESCE($6, status)
-       WHERE id = $7
-       RETURNING *`,
-      [name, category_id, serial_number, purchase_date, cost, status, id]
-    );
+    const updates: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (name !== undefined) { updates.push(`name = $${paramIndex++}`); params.push(name); }
+    if (category_id !== undefined) { updates.push(`category_id = $${paramIndex++}`); params.push(category_id === 'none' ? null : category_id); }
+    if (department_id !== undefined) { updates.push(`department_id = $${paramIndex++}`); params.push(department_id === 'none' ? null : department_id); }
+    if (serial_number !== undefined) { updates.push(`serial_number = $${paramIndex++}`); params.push(serial_number); }
+    if (purchase_date !== undefined) { updates.push(`purchase_date = $${paramIndex++}`); params.push(purchase_date); }
+    if (cost !== undefined) { updates.push(`cost = $${paramIndex++}`); params.push(cost); }
+    if (status !== undefined) { updates.push(`status = $${paramIndex++}`); params.push(status); }
+
+    if (updates.length === 0) {
+      res.status(400).json({ error: 'No fields to update' });
+      return;
+    }
+
+    params.push(id);
+    const query = `UPDATE assets SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
+    const result = await db.query(query, params);
 
     res.json(result.rows[0]);
   } catch (error) {
@@ -228,3 +266,4 @@ export const deleteAsset = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to retire asset' });
   }
 };
+

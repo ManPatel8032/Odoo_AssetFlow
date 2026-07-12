@@ -1,17 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BarChart3, Package, Users, Wrench, Activity, Clock } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { 
+  Package, Users, Wrench, Calendar, ArrowLeftRight, Clock, 
+  AlertTriangle, Plus, BookOpen, FileText, CheckCircle2, Info
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { fetchWithAuth } from "@/lib/api";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import Link from "next/link";
 
 interface DashboardData {
   kpis: {
@@ -35,31 +32,6 @@ interface DashboardData {
   }[];
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  Available: "#22c55e",
-  Allocated: "#3b82f6",
-  Maintenance: "#f59e0b",
-  Retired: "#ef4444",
-};
-
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const item = payload[0];
-    return (
-      <div className="bg-white border border-gray-100 rounded-xl shadow-lg px-4 py-3 text-sm">
-        <p className="font-semibold text-gray-800">{item.name}</p>
-        <p className="text-gray-500 mt-0.5">
-          {item.value} asset{item.value !== 1 ? "s" : ""}{" "}
-          <span className="text-gray-400">
-            ({item.payload.percent !== undefined ? `${(item.payload.percent * 100).toFixed(1)}%` : ""})
-          </span>
-        </p>
-      </div>
-    );
-  }
-  return null;
-};
-
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,8 +43,6 @@ export default function DashboardPage() {
         if (response.ok) {
           const result = await response.json();
           setData(result);
-        } else {
-          console.error("Failed to fetch dashboard data");
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -86,156 +56,154 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 space-y-4 p-8 pt-6 flex items-center justify-center">
-        <div className="text-muted-foreground animate-pulse">Loading dashboard data...</div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-muted-foreground animate-pulse flex flex-col items-center gap-2">
+          <Clock className="h-8 w-8 animate-spin text-blue-600" />
+          <span>Loading dashboard overview...</span>
+        </div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="flex-1 space-y-4 p-8 pt-6">
-        <div className="text-red-500">Failed to load dashboard data.</div>
+      <div className="p-8 text-center max-w-md mx-auto">
+        <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900">Connection Failed</h3>
+        <p className="text-sm text-muted-foreground mt-2">Could not retrieve dashboard statistics. Please ensure the backend server is running.</p>
       </div>
     );
   }
 
-  const kpis = [
+  const overviewCards = [
     {
-      title: "Total Assets",
-      value: data.kpis.assets_total.toString(),
-      description: `${data.kpis.assets_available} available`,
-      icon: <Package className="h-4 w-4 text-muted-foreground" />,
+      title: "Available",
+      value: data.kpis.assets_available,
+      icon: <Package className="h-5 w-5 text-green-500" />,
+      bg: "hover:border-green-200 transition-all",
     },
     {
       title: "Allocated",
-      value: data.kpis.assets_allocated.toString(),
-      description: `${data.kpis.overdue_returns} overdue returns`,
-      icon: <Users className="h-4 w-4 text-muted-foreground" />,
+      value: data.kpis.assets_allocated,
+      icon: <Users className="h-5 w-5 text-blue-500" />,
+      bg: "hover:border-blue-200 transition-all",
     },
     {
       title: "In Maintenance",
-      value: data.kpis.assets_maintenance.toString(),
-      description: `${data.kpis.maintenance_today} added today`,
-      icon: <Wrench className="h-4 w-4 text-muted-foreground" />,
+      value: data.kpis.assets_maintenance,
+      icon: <Wrench className="h-5 w-5 text-amber-500" />,
+      bg: "hover:border-amber-200 transition-all",
     },
     {
-      title: "Utilization Rate",
-      value: data.kpis.assets_total > 0
-        ? `${Math.round((data.kpis.assets_allocated / data.kpis.assets_total) * 100)}%`
-        : "0%",
-      description: "Allocated vs Total",
-      icon: <BarChart3 className="h-4 w-4 text-muted-foreground" />,
+      title: "Active Bookings",
+      value: data.kpis.active_bookings,
+      icon: <Calendar className="h-5 w-5 text-indigo-500" />,
+      bg: "hover:border-indigo-200 transition-all",
+    },
+    {
+      title: "Pending Transfers",
+      value: data.kpis.pending_transfers,
+      icon: <ArrowLeftRight className="h-5 w-5 text-purple-500" />,
+      bg: "hover:border-purple-200 transition-all",
+    },
+    {
+      title: "Upcoming Returns",
+      value: data.kpis.upcoming_returns,
+      icon: <Clock className="h-5 w-5 text-teal-500" />,
+      bg: "hover:border-teal-200 transition-all",
     },
   ];
 
-  const pieData = [
-    { name: "Available", value: data.kpis.assets_available },
-    { name: "Allocated", value: data.kpis.assets_allocated },
-    { name: "Maintenance", value: data.kpis.assets_maintenance },
-    { name: "Retired", value: data.kpis.assets_retired },
-  ].filter((d) => d.value > 0);
-
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+    <div className="p-8 max-w-7xl mx-auto space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Today's Overview</h1>
+        <p className="text-muted-foreground mt-1">Real-time status of company assets, bookings, and actions.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((kpi, index) => (
-          <Card key={index}>
+      {/* KPI Grid */}
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {overviewCards.map((card, index) => (
+          <Card key={index} className={`shadow-sm border-gray-150 ${card.bg}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-              {kpi.icon}
+              <CardTitle className="text-sm font-semibold text-gray-600">{card.title}</CardTitle>
+              {card.icon}
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{kpi.value}</div>
-              <p className="text-xs text-muted-foreground">{kpi.description}</p>
+              <div className="text-3xl font-bold text-gray-900">{card.value}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Asset Utilization Overview</CardTitle>
-            <CardDescription>Visual breakdown of asset statuses</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[300px]">
-            {pieData.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-                <BarChart3 className="h-16 w-16 mb-4 opacity-20" />
-                <p>No asset data available</p>
+      {/* Overdue Alert Banner */}
+      {data.kpis.overdue_returns > 0 && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-100 text-red-800 shadow-sm">
+          <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 animate-bounce" />
+          <div className="text-sm font-medium">
+            {data.kpis.overdue_returns} asset{data.kpis.overdue_returns > 1 ? "s are" : " is"} overdue for return - flagged for follow-up
+          </div>
+        </div>
+      )}
+
+      {/* Quick Action Buttons */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Link href="/assets" className="w-full">
+          <Button className="w-full h-12 text-sm font-medium bg-gray-900 hover:bg-gray-800 text-white rounded-xl shadow-sm flex items-center justify-center gap-2">
+            <Plus className="h-4 w-4" />
+            Register Asset
+          </Button>
+        </Link>
+        <Link href="/bookings" className="w-full">
+          <Button variant="outline" className="w-full h-12 text-sm font-medium border-gray-200 hover:bg-gray-50 rounded-xl shadow-sm flex items-center justify-center gap-2">
+            <BookOpen className="h-4 w-4 text-gray-500" />
+            Book Resource
+          </Button>
+        </Link>
+        <Link href="/allocations" className="w-full">
+          <Button variant="outline" className="w-full h-12 text-sm font-medium border-gray-200 hover:bg-gray-50 rounded-xl shadow-sm flex items-center justify-center gap-2">
+            <FileText className="h-4 w-4 text-gray-500" />
+            Raise Requests
+          </Button>
+        </Link>
+      </div>
+
+      {/* Recent Activity List */}
+      <Card className="shadow-sm border-gray-150">
+        <CardHeader>
+          <CardTitle className="text-xl font-bold text-gray-900">Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="divide-y divide-gray-100">
+            {data.recent_activity.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No recent activities logged.
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={70}
-                    outerRadius={110}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {pieData.map((entry) => (
-                      <Cell
-                        key={entry.name}
-                        fill={STATUS_COLORS[entry.name] ?? "#94a3b8"}
-                        stroke="transparent"
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend
-                    iconType="circle"
-                    iconSize={8}
-                    wrapperStyle={{ fontSize: "13px", paddingTop: "12px" }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Activity className="mr-2 h-5 w-5" />
-              Recent Activity
-            </CardTitle>
-            <CardDescription>Latest actions performed on assets.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
-              {data.recent_activity.length === 0 ? (
-                <div className="text-sm text-muted-foreground text-center pt-4">No recent activity</div>
-              ) : (
-                data.recent_activity.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium leading-none capitalize">{item.action.replace(/_/g, " ")}</p>
-                      <p className="text-sm text-muted-foreground line-clamp-1">
-                        {item.details || "No details provided"}
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0 ml-4">
-                      <div className="text-sm font-medium">{item.performed_by_name || "System"}</div>
-                      <div className="text-xs text-muted-foreground flex items-center justify-end gap-1 mt-1">
-                        <Clock className="h-3 w-3" />
-                        {new Date(item.created_at).toLocaleDateString()}
-                      </div>
-                    </div>
+              data.recent_activity.slice(0, 10).map((activity) => (
+                <div key={activity.id} className="py-4 flex items-start justify-between gap-4 first:pt-0 last:pb-0">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-gray-900 capitalize leading-none">
+                      {activity.action.replace(/_/g, " ")}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {activity.details}
+                    </p>
                   </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-xs font-medium text-gray-500 block">
+                      {activity.performed_by_name || "System"}
+                    </span>
+                    <span className="text-[10px] text-gray-400 block mt-0.5">
+                      {new Date(activity.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
