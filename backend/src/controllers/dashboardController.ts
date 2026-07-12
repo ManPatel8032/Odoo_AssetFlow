@@ -20,40 +20,6 @@ export const getDashboardKPIs = async (req: Request, res: Response) => {
     let activityWhere = '1=1';
     
     const params: any[] = [];
-    if (role === 'employee') {
-      params.push(userId);
-      assetJoin = 'LEFT JOIN allocations al_dash ON a.id = al_dash.asset_id AND al_dash.returned_at IS NULL';
-      assetWhere = `(al_dash.employee_id = $1 OR a.status = 'available')`;
-      
-      bookingWhere = `bookings.employee_id = $1`;
-      
-      transferWhere = `(transfers.from_employee_id = $1 OR transfers.to_employee_id = $1)`;
-      
-      allocWhere = `allocations.employee_id = $1`;
-      
-      maintJoin = 'JOIN allocations al_dash ON maintenance.asset_id = al_dash.asset_id AND al_dash.returned_at IS NULL';
-      maintWhere = `al_dash.employee_id = $1`;
-
-      activityWhere = `al.profile_id = $1`;
-    } else if (role === 'department_head') {
-      params.push(department_id);
-      assetJoin = 'LEFT JOIN allocations al_dash ON a.id = al_dash.asset_id AND al_dash.returned_at IS NULL LEFT JOIN profiles p_dash ON al_dash.employee_id = p_dash.id';
-      assetWhere = `(p_dash.department_id = $1 OR a.status = 'available')`;
-      
-      bookingJoin = 'JOIN profiles p_dash ON bookings.employee_id = p_dash.id';
-      bookingWhere = `p_dash.department_id = $1`;
-      
-      transferJoin = 'JOIN profiles p_from ON transfers.from_employee_id = p_from.id JOIN profiles p_to ON transfers.to_employee_id = p_to.id';
-      transferWhere = `(p_from.department_id = $1 OR p_to.department_id = $1)`;
-      
-      allocJoin = 'JOIN profiles p_dash ON allocations.employee_id = p_dash.id';
-      allocWhere = `p_dash.department_id = $1`;
-      
-      maintJoin = 'JOIN allocations al_dash ON maintenance.asset_id = al_dash.asset_id AND al_dash.returned_at IS NULL JOIN profiles p_dash ON al_dash.employee_id = p_dash.id';
-      maintWhere = `p_dash.department_id = $1`;
-
-      activityWhere = `p.department_id = $1`;
-    }
 
     const { rows } = await db.query(`
       SELECT

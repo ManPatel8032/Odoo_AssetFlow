@@ -33,7 +33,7 @@ export default function LoginPage() {
 
       if (res.ok) {
         login(data.token, data.user);
-        router.push("/dashboard");
+        router.push(data.user.role === 'employee' ? "/assets" : "/dashboard");
       } else {
         toast({
           title: "Login Failed",

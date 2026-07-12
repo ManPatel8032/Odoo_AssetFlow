@@ -176,11 +176,11 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Activity & Workflow Guide Grid */}
-      <div className="grid gap-6 lg:grid-cols-3 items-stretch">
+      {/* Activity Grid */}
+      <div className="mt-8">
         {/* Recent Activity List */}
-        <div className="lg:col-span-2">
-          <Card className="shadow-sm border-gray-150 h-full flex flex-col">
+        <div>
+          <Card className="shadow-sm border-gray-150 flex flex-col">
             <CardHeader>
               <CardTitle className="text-xl font-bold text-gray-900">Recent Activity</CardTitle>
             </CardHeader>
@@ -223,67 +223,6 @@ export default function DashboardPage() {
                     </div>
                   ))
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Workflow Guide */}
-        <div>
-          <Card className="shadow-sm border-gray-150 h-full">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold text-gray-900">System Workflow Guide</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-6">
-              <div className="relative border-l border-gray-200 ml-3 pl-6 space-y-5">
-                {/* Step 1 */}
-                <div className="relative">
-                  <span className="absolute -left-[31px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 text-blue-600 text-[10px] font-bold border border-blue-200">1</span>
-                  <h4 className="text-sm font-bold text-gray-900">Admin Org Setup</h4>
-                  <p className="text-xs text-gray-500 mt-1">Admin sets up departments, categories, and promotes employees to Department Head / Asset Manager.</p>
-                </div>
-                {/* Step 2 */}
-                <div className="relative">
-                  <span className="absolute -left-[31px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-green-50 text-green-700 text-[10px] font-bold border border-green-200">2</span>
-                  <h4 className="text-sm font-bold text-gray-900">Register Assets</h4>
-                  <p className="text-xs text-gray-500 mt-1">Asset Manager registers new assets, which enter the system as <strong>Available</strong>.</p>
-                </div>
-                {/* Step 3 */}
-                <div className="relative">
-                  <span className="absolute -left-[31px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold border border-indigo-200">3</span>
-                  <h4 className="text-sm font-bold text-gray-900">Allocation & Shared</h4>
-                  <p className="text-xs text-gray-500 mt-1">Asset is allocated to user/dept (blocked if already allocated - transfer requested instead) or marked as bookable resource.</p>
-                </div>
-                {/* Step 4 */}
-                <div className="relative">
-                  <span className="absolute -left-[31px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-teal-50 text-teal-700 text-[10px] font-bold border border-teal-200">4</span>
-                  <h4 className="text-sm font-bold text-gray-900">Time Slot Bookings</h4>
-                  <p className="text-xs text-gray-500 mt-1">Employees book shared resources by time slot; overlapping bookings are auto-rejected.</p>
-                </div>
-                {/* Step 5 */}
-                <div className="relative">
-                  <span className="absolute -left-[31px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200">5</span>
-                  <h4 className="text-sm font-bold text-gray-900">Repair & Maintenance</h4>
-                  <p className="text-xs text-gray-500 mt-1">Holder raises request. It must be approved before work starts and status changes to <strong>Under Maintenance</strong>.</p>
-                </div>
-                {/* Step 6 */}
-                <div className="relative">
-                  <span className="absolute -left-[31px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-orange-50 text-orange-700 text-[10px] font-bold border border-orange-200">6</span>
-                  <h4 className="text-sm font-bold text-gray-900">Transfers & Returns</h4>
-                  <p className="text-xs text-gray-500 mt-1">Assets are returned or transferred; overdue returns are automatically flagged by the system.</p>
-                </div>
-                {/* Step 7 */}
-                <div className="relative">
-                  <span className="absolute -left-[31px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-200">7</span>
-                  <h4 className="text-sm font-bold text-gray-900">Periodic Auditing</h4>
-                  <p className="text-xs text-gray-500 mt-1">Audits assign auditors, verify physical assets, and auto-generate discrepancy reports before closing.</p>
-                </div>
-                {/* Step 8 */}
-                <div className="relative">
-                  <span className="absolute -left-[31px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-50 text-red-700 text-[10px] font-bold border border-red-200">8</span>
-                  <h4 className="text-sm font-bold text-gray-900">Activity Tracking</h4>
-                  <p className="text-xs text-gray-500 mt-1">All activity is tracked in real-time through notifications, audit logs, and analytics reports.</p>
-                </div>
               </div>
             </CardContent>
           </Card>

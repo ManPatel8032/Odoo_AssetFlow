@@ -19,7 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin"] },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "asset_manager", "department_head", "employee"] },
   { href: "/assets", label: "Assets", icon: Package, roles: ["asset_manager", "department_head", "employee"] },
   { href: "/allocations", label: "Allocations", icon: Users, roles: ["asset_manager", "department_head", "employee"] },
   { href: "/bookings", label: "Bookings", icon: BookOpen, roles: ["department_head", "employee"] },
