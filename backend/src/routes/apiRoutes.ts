@@ -7,10 +7,14 @@ import { getAllocations, createAllocation, returnAsset } from '../controllers/al
 import { getTransfers, requestTransfer, approveTransfer, rejectTransfer } from '../controllers/transferController';
 import { getNotifications } from '../controllers/notificationController';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../controllers/categoryController';
+import { getEmployees } from '../controllers/employeeController';
 import { getUtilizationStats, exportAssetData } from '../controllers/reportController';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
+
+// ─── Employees ──────────────────────────────────────────────────────────────
+router.get('/employees', getEmployees);
 
 // ─── Categories ─────────────────────────────────────────────────────────────
 router.get('/categories', getCategories);
