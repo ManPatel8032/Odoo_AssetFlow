@@ -68,3 +68,30 @@ export const exportAssetData = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to export asset data' });
   }
 };
+
+export const exportDiscrepancies = async (req: Request, res: Response) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT ai.status as discrepancy, a.tag, a.name, ac.name as cycle_name, ac.end_date
+      FROM audit_items ai
+      JOIN assets a ON ai.asset_id = a.id
+      JOIN audit_cycles ac ON ai.cycle_id = ac.id
+      WHERE ai.status IN ('missing', 'damaged')
+      ORDER BY ac.end_date DESC NULLS LAST
+    `);
+
+    const csvHeader = 'Discrepancy Type,Asset Tag,Asset Name,Audit Cycle,Date\n';
+    const csvRows = rows.map((r: any) => 
+      `"${r.discrepancy.toUpperCase()}","${r.tag}","${r.name}","${r.cycle_name}","${r.end_date ? new Date(r.end_date).toLocaleDateString() : 'Active'}"`
+    ).join('\n');
+
+    const csvData = csvHeader + csvRows;
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="discrepancy_report.csv"');
+    res.status(200).send(csvData);
+  } catch (error) {
+    console.error('Error exporting discrepancies:', error);
+    res.status(500).json({ error: 'Failed to export discrepancies' });
+  }
+};

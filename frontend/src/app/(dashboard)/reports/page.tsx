@@ -8,6 +8,7 @@ import { useState } from "react";
 
 export default function ReportsPage() {
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingDiscrepancies, setIsExportingDiscrepancies] = useState(false);
 
   const handleExportCSV = async () => {
     setIsExporting(true);
@@ -32,6 +33,29 @@ export default function ReportsPage() {
     }
   };
 
+  const handleExportDiscrepancies = async () => {
+    setIsExportingDiscrepancies(true);
+    try {
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/reports/export-discrepancies`);
+      if (!response.ok) throw new Error("Network response was not ok");
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = 'discrepancy_report.csv';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed', error);
+      alert('Failed to export discrepancies CSV');
+    } finally {
+      setIsExportingDiscrepancies(false);
+    }
+  };
+
   const reports = [
     {
       id: "asset-inventory",
@@ -48,6 +72,14 @@ export default function ReportsPage() {
       icon: <FileText className="w-5 h-5 text-orange-500" />,
       action: () => alert("This report is coming soon."),
       available: false
+    },
+    {
+      id: "audit-discrepancies",
+      name: "Audit Discrepancies Report",
+      description: "Detailed list of all missing and damaged assets flagged during audits.",
+      icon: <LayoutDashboard className="w-5 h-5 text-red-500" />,
+      action: handleExportDiscrepancies,
+      available: true
     },
     {
       id: "audit-compliance",
@@ -96,10 +128,10 @@ export default function ReportsPage() {
                     <Button 
                       variant={report.available ? "default" : "secondary"} 
                       onClick={report.action}
-                      disabled={isExporting && report.id === "asset-inventory"}
+                      disabled={!report.available || (isExporting && report.id === "asset-inventory") || (isExportingDiscrepancies && report.id === "audit-discrepancies")}
                     >
                       <Download className="mr-2 h-4 w-4" />
-                      {isExporting && report.id === "asset-inventory" ? "Downloading..." : "Download CSV"}
+                      {(isExporting && report.id === "asset-inventory") || (isExportingDiscrepancies && report.id === "audit-discrepancies") ? "Downloading..." : "Download CSV"}
                     </Button>
                   </TableCell>
                 </TableRow>

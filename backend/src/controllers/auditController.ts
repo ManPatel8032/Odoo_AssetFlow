@@ -149,8 +149,8 @@ export const closeAudit = async (req: Request, res: Response) => {
 
     // 3. Auto-create maintenance tickets for damaged items
     await client.query(`
-      INSERT INTO maintenance (asset_id, description, status)
-      SELECT asset_id, 'Auto-generated from damaged audit report', 'scheduled'
+      INSERT INTO maintenance (asset_id, description, status, scheduled_date)
+      SELECT asset_id, 'Auto-generated from damaged audit report', 'scheduled', CURRENT_TIMESTAMP
       FROM audit_items 
       WHERE cycle_id = $1 AND status = 'damaged'
     `, [id]);
