@@ -106,7 +106,7 @@ export default function AssetDetailPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Cost</p>
-              <p>{asset.cost ? `$${asset.cost.toFixed(2)}` : "N/A"}</p>
+              <p>{asset.cost ? `$${Number(asset.cost).toFixed(2)}` : "N/A"}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Added On</p>
