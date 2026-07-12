@@ -22,7 +22,7 @@ import { getMaintenance, createMaintenance, updateMaintenanceStatus } from '../c
 import { getAudits, createAudit, getAuditItems, updateAuditItem, closeAudit } from '../controllers/auditController';
 
 // Reports
-import { getUtilizationStats, exportAssetData, exportDiscrepancies } from '../controllers/reportController';
+import { getUtilizationStats, exportAssetData, exportDiscrepancies, exportMaintenanceHistory, exportAuditCompliance } from '../controllers/reportController';
 
 // Org Setup
 import { getProfiles, getProfileById, promoteUser, deactivateUser } from '../controllers/profileController';
@@ -98,6 +98,8 @@ router.post('/audits/:id/close', authMiddleware, requireRole('admin', 'asset_man
 router.get('/reports/utilization', authMiddleware, requireRole('admin', 'asset_manager'), getUtilizationStats);
 router.get('/reports/export', authMiddleware, requireRole('admin', 'asset_manager'), exportAssetData);
 router.get('/reports/export-discrepancies', authMiddleware, requireRole('admin', 'asset_manager'), exportDiscrepancies);
+router.get('/reports/export-maintenance', authMiddleware, requireRole('admin', 'asset_manager'), exportMaintenanceHistory);
+router.get('/reports/export-compliance', authMiddleware, requireRole('admin', 'asset_manager'), exportAuditCompliance);
 
 // ─── Employees ──────────────────────────────────────────────────────────────
 router.get('/employees', authMiddleware, getEmployees);
