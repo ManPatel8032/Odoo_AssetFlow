@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import MaintenanceTicketCard from "../../../components/maintenance/MaintenanceTicketCard";
 import MaintenanceForm from "../../../components/maintenance/MaintenanceForm";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Plus } from "lucide-react";
 
 export default function MaintenancePage() {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -50,52 +53,62 @@ export default function MaintenancePage() {
   ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto h-[calc(100vh-4rem)] flex flex-col">
+    <div className="p-6 max-w-full mx-auto h-[calc(100vh-4rem)] flex flex-col">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Maintenance Workflows</h1>
-        <button 
-          onClick={() => setIsFormOpen(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-        >
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Maintenance Workflows</h1>
+          <p className="text-muted-foreground mt-1">Track and manage asset repairs, servicing, and general maintenance.</p>
+        </div>
+        <Button onClick={() => setIsFormOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
           Raise Request
-        </button>
+        </Button>
       </div>
 
       {loading ? (
-        <p>Loading...</p>
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">Loading maintenance tickets...</div>
       ) : (
         <div className="flex flex-1 gap-6 overflow-x-auto pb-4">
-          {columns.map(col => (
-            <div key={col.id} className="min-w-[300px] flex-1 bg-gray-50 rounded-lg border border-gray-200 p-4 flex flex-col">
-              <h2 className="font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-200 flex justify-between">
-                {col.title}
-                <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-xs">
-                  {tickets.filter(t => t.status === col.id).length}
-                </span>
-              </h2>
-              <div className="flex-1 overflow-y-auto space-y-3">
-                {tickets.filter(t => t.status === col.id).map(ticket => (
-                  <MaintenanceTicketCard 
-                    key={ticket.id} 
-                    ticket={ticket} 
-                    onStatusChange={handleStatusChange} 
-                  />
-                ))}
+          {columns.map(col => {
+            const colTickets = tickets.filter(t => t.status === col.id);
+            return (
+              <div key={col.id} className="min-w-[320px] max-w-[350px] flex-1 bg-muted/40 rounded-xl border border-border p-4 flex flex-col h-full">
+                <div className="flex items-center justify-between mb-4 pb-2 border-b">
+                  <h2 className="font-semibold text-foreground tracking-tight">
+                    {col.title}
+                  </h2>
+                  <Badge variant="secondary" className="rounded-full px-2">
+                    {colTickets.length}
+                  </Badge>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin">
+                  {colTickets.map(ticket => (
+                    <MaintenanceTicketCard 
+                      key={ticket.id} 
+                      ticket={ticket} 
+                      onStatusChange={handleStatusChange} 
+                    />
+                  ))}
+                  {colTickets.length === 0 && (
+                    <div className="text-center py-8 text-sm text-muted-foreground border-2 border-dashed rounded-lg bg-background/50">
+                      No tickets
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {isFormOpen && (
-        <MaintenanceForm 
-          onClose={() => setIsFormOpen(false)} 
-          onSuccess={() => {
-            setIsFormOpen(false);
-            fetchTickets();
-          }} 
-        />
-      )}
+      <MaintenanceForm 
+        open={isFormOpen} 
+        onOpenChange={setIsFormOpen} 
+        onSuccess={() => {
+          setIsFormOpen(false);
+          fetchTickets();
+        }} 
+      />
     </div>
   );
 }

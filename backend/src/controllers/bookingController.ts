@@ -1,17 +1,7 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid'; // We need uuid for generating mock IDs
 
-// In-memory mock data
-let mockBookings: any[] = [
-  {
-    id: 'booking-1',
-    asset_id: 'asset-1',
-    asset_name: 'Dell XPS 15',
-    employee_id: 'mock-employee-123',
-    employee_name: 'Mock Employee',
-    start_time: new Date(new Date().setHours(9, 0, 0, 0)).toISOString(),
-    end_time: new Date(new Date().setHours(17, 0, 0, 0)).toISOString(),
-    status: 'confirmed'
+// In-memory mock data removed
 import db from '../config/db';
 
 export const getBookings = async (req: Request, res: Response) => {
@@ -45,13 +35,22 @@ export const getBookings = async (req: Request, res: Response) => {
 
 export const createBooking = async (req: Request, res: Response) => {
   const { asset_id, start_time, end_time } = req.body;
-  // If the user isn't logged in with a real UUID profile, we might get foreign key errors.
-  // We'll use the ID from authMiddleware or a default UUID for now if it's missing
-  const employee_id = req.user?.id || '00000000-0000-0000-0000-000000000000'; 
   
   const client = await db.connect();
   
   try {
+    // If the user isn't logged in with a real UUID profile, we might get foreign key errors.
+    // Let's dynamically get the first available employee from the DB as a fallback
+    let employee_id = req.user?.id;
+    if (!employee_id) {
+      const { rows: profiles } = await client.query('SELECT id FROM profiles LIMIT 1');
+      if (profiles.length > 0) {
+        employee_id = profiles[0].id;
+      } else {
+        employee_id = '00000000-0000-0000-0000-000000000000'; // fallback which will fail if DB is strict
+      }
+    }
+    
     await client.query('BEGIN');
     
     // 1. Check for overlap using PostgreSQL OVERLAPS

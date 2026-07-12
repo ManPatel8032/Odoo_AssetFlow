@@ -1,6 +1,10 @@
 "use client";
 
 import { format } from "date-fns";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CalendarIcon, ArrowRight, X } from "lucide-react";
 
 export default function MaintenanceTicketCard({ ticket, onStatusChange }: { ticket: any, onStatusChange: (id: string, status: string) => void }) {
   
@@ -15,43 +19,56 @@ export default function MaintenanceTicketCard({ ticket, onStatusChange }: { tick
   const nextStatus = getNextStatus(ticket.status);
 
   return (
-    <div className="bg-white p-4 rounded shadow-sm border border-gray-200 text-sm">
-      <div className="flex justify-between items-start mb-2">
-        <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded">
-          {ticket.asset_tag}
-        </span>
-        <span className="text-gray-400 text-xs">
-          {format(new Date(ticket.created_at), 'MMM dd')}
-        </span>
-      </div>
+    <Card className="shadow-sm hover:shadow-md transition-all border-border/60">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex justify-between items-start mb-1">
+          <Badge variant="outline" className="bg-blue-50/50 text-blue-700 hover:bg-blue-50 font-semibold border-blue-200">
+            {ticket.asset_tag}
+          </Badge>
+          <span className="text-muted-foreground text-[10px] uppercase tracking-wider font-semibold">
+            {format(new Date(ticket.created_at), 'MMM dd')}
+          </span>
+        </div>
+        <h3 className="font-semibold leading-tight text-foreground">{ticket.asset_name}</h3>
+      </CardHeader>
       
-      <h3 className="font-medium text-gray-900 mb-1">{ticket.asset_name}</h3>
-      <p className="text-gray-600 mb-3 line-clamp-2">{ticket.description}</p>
-      
-      <div className="flex items-center text-xs text-gray-500 mb-4">
-        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-        Sched: {format(new Date(ticket.scheduled_date), 'MMM dd, yyyy')}
-      </div>
+      <CardContent className="p-4 py-2">
+        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px] mb-3">{ticket.description}</p>
+        
+        <div className="flex items-center text-xs font-medium text-muted-foreground bg-muted/50 p-2 rounded-md w-fit gap-1.5">
+          <CalendarIcon className="w-3.5 h-3.5" />
+          {format(new Date(ticket.scheduled_date), 'MMM dd, yyyy')}
+        </div>
+      </CardContent>
 
-      <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-        {ticket.status !== 'cancelled' && ticket.status !== 'completed' && (
-          <button 
+      <CardFooter className="p-4 pt-3 border-t bg-muted/10 flex justify-between gap-2">
+        {ticket.status !== 'cancelled' && ticket.status !== 'completed' ? (
+          <Button 
+            variant="ghost" 
+            size="sm"
             onClick={() => onStatusChange(ticket.id, 'cancelled')}
-            className="text-red-500 hover:text-red-700 text-xs font-medium"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2"
+            title="Cancel Ticket"
           >
+            <X className="h-4 w-4 mr-1" />
             Cancel
-          </button>
+          </Button>
+        ) : (
+          <div /> // Spacer
         )}
         
         {nextStatus && (
-          <button 
+          <Button 
+            variant="secondary"
+            size="sm"
             onClick={() => onStatusChange(ticket.id, nextStatus)}
-            className="ml-auto bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-medium px-3 py-1.5 rounded"
+            className="h-8 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
           >
-            Move to {nextStatus.replace('_', ' ')}
-          </button>
+            {nextStatus === 'in_progress' ? 'Start Work' : 'Complete'}
+            <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+          </Button>
         )}
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }
