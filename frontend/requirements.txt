@@ -1,0 +1,2 @@
+# Python requirements for frontend (if applicable)
+# Note: The frontend is a Next.js (Node.js) project. Dependencies are managed in package.json.
