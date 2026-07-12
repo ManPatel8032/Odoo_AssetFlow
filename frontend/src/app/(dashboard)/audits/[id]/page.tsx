@@ -14,6 +14,7 @@ export default function AuditExecutionPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
+  const [cycle, setCycle] = useState<any>(null);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -37,9 +38,25 @@ export default function AuditExecutionPage() {
     }
   };
 
+  const fetchCycle = async () => {
+    try {
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits`);
+      if (response.ok) {
+        const audits = await response.json();
+        const currentCycle = audits.find((a: any) => a.id === id);
+        if (currentCycle) {
+          setCycle(currentCycle);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch audits for cycle info', error);
+    }
+  };
+
   useEffect(() => {
     if (id && user && hasPermission(user.role, "audit_view")) {
       fetchItems();
+      fetchCycle();
     }
   }, [id, user]);
 
@@ -69,10 +86,16 @@ export default function AuditExecutionPage() {
       });
       if (response.ok) {
         router.push("/audits");
+        router.refresh();
+      } else {
+        console.error('Failed to close audit: API returned', response.status);
+        setIsClosing(false);
+        alert('Failed to close audit cycle.');
       }
     } catch (error) {
       console.error('Failed to close audit', error);
       setIsClosing(false);
+      alert('An error occurred while closing the audit.');
     }
   };
 
@@ -81,32 +104,27 @@ export default function AuditExecutionPage() {
   }
 
   const canManage = hasPermission(user.role, "audit_manage");
-  const isAuditComplete = items.every(item => item.status !== 'pending');
+  const isAuditComplete = items.length > 0 && items.every(item => item.status !== 'pending');
+  const flaggedCount = items.filter(item => item.status === 'missing' || item.status === 'damaged').length;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow border border-gray-200">
-        <div>
-          <button onClick={() => router.push("/audits")} className="text-sm text-gray-500 hover:text-gray-700 mb-1">
-            ← Back to Audits
-          </button>
-          <h1 className="text-2xl font-bold">Audit Execution Panel</h1>
-          <p className="text-gray-500 text-sm">Review each item and mark its condition.</p>
-        </div>
-        {canManage && (
-          <button 
-            onClick={handleCloseAudit}
-            disabled={!isAuditComplete || isClosing}
-            className={`px-4 py-2 rounded-md text-white font-medium ${
-              !isAuditComplete || isClosing ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
-            }`}
-          >
-            {isClosing ? "Closing..." : "Close & Reconcile Audit"}
-          </button>
-        )}
+    <div className="p-6 max-w-5xl mx-auto">
+      <div className="mb-4">
+        <button onClick={() => router.push("/audits")} className="text-sm text-gray-500 hover:text-gray-700">
+          ← Back to Audits
+        </button>
       </div>
 
-      {!isAuditComplete && canManage && (
+      <div className="bg-[#2a2a2a] text-white p-6 rounded-xl shadow border border-gray-600 mb-6">
+        <h2 className="text-xl font-medium mb-1">
+          {cycle ? cycle.name : "Loading Audit..."} {cycle?.start_date ? `- Started on ${new Date(cycle.start_date).toLocaleDateString()}` : ''}
+        </h2>
+        <p className="text-gray-300 text-sm">
+          Auditors: Current User
+        </p>
+      </div>
+
+      {!isAuditComplete && items.length > 0 && canManage && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 text-sm text-yellow-700">
           You must mark all items before you can close and reconcile this audit cycle.
         </div>
@@ -115,60 +133,88 @@ export default function AuditExecutionPage() {
       {loading ? (
         <p>Loading checklist...</p>
       ) : (
-        <div className="space-y-4">
-          {items.map(item => (
-            <div key={item.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex items-center justify-between">
-              <div>
-                <div className="flex items-center space-x-2 mb-1">
-                  <span className="bg-gray-100 text-gray-800 text-xs font-semibold px-2 py-0.5 rounded">
-                    {item.asset_tag}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    Location: {item.location}
-                  </span>
-                </div>
-                <h3 className="font-medium text-lg">{item.asset_name}</h3>
-              </div>
-              
-              <div className="flex space-x-2">
-                <button 
-                  onClick={() => handleMarkStatus(item.id, 'verified')}
-                  disabled={!canManage}
-                  className={`px-4 py-2 rounded border text-sm font-medium flex items-center transition-colors ${
-                    item.status === 'verified' 
-                      ? 'bg-green-100 border-green-500 text-green-700' 
-                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                  } ${!canManage ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  ✅ Verified
-                </button>
-                <button 
-                  onClick={() => handleMarkStatus(item.id, 'missing')}
-                  disabled={!canManage}
-                  className={`px-4 py-2 rounded border text-sm font-medium flex items-center transition-colors ${
-                    item.status === 'missing' 
-                      ? 'bg-red-100 border-red-500 text-red-700' 
-                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                  } ${!canManage ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  ❌ Missing
-                </button>
-                <button 
-                  onClick={() => handleMarkStatus(item.id, 'damaged')}
-                  disabled={!canManage}
-                  className={`px-4 py-2 rounded border text-sm font-medium flex items-center transition-colors ${
-                    item.status === 'damaged' 
-                      ? 'bg-orange-100 border-orange-500 text-orange-700' 
-                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                  } ${!canManage ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  ⚠️ Damaged
-                </button>
-              </div>
-            </div>
-          ))}
+        <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden mb-8">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Asset</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Expected location</th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Verification</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {items.map(item => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="font-medium text-gray-900">{item.asset_tag} {item.asset_name}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-gray-500">{item.location || 'Unknown'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex justify-center space-x-3">
+                      <button 
+                        onClick={() => handleMarkStatus(item.id, 'verified')}
+                        disabled={!canManage}
+                        className={`px-4 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                          item.status === 'verified' 
+                            ? 'bg-green-50 border-green-500 text-green-700' 
+                            : 'bg-white border-gray-300 text-gray-500 hover:border-green-300'
+                        } ${!canManage ? 'opacity-50 cursor-not-allowed hover:border-gray-300' : ''}`}
+                      >
+                        Verified
+                      </button>
+                      <button 
+                        onClick={() => handleMarkStatus(item.id, 'missing')}
+                        disabled={!canManage}
+                        className={`px-4 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                          item.status === 'missing' 
+                            ? 'bg-red-50 border-red-500 text-red-700' 
+                            : 'bg-white border-gray-300 text-gray-500 hover:border-red-300'
+                        } ${!canManage ? 'opacity-50 cursor-not-allowed hover:border-gray-300' : ''}`}
+                      >
+                        Missing
+                      </button>
+                      <button 
+                        onClick={() => handleMarkStatus(item.id, 'damaged')}
+                        disabled={!canManage}
+                        className={`px-4 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                          item.status === 'damaged' 
+                            ? 'bg-gray-100 border-gray-500 text-gray-700' 
+                            : 'bg-white border-gray-300 text-gray-500 hover:border-gray-400'
+                        } ${!canManage ? 'opacity-50 cursor-not-allowed hover:border-gray-300' : ''}`}
+                      >
+                        Damaged
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
+
+      {items.length > 0 && (
+        <div className="bg-[#2a2a2a] border border-[#d97706] text-[#fbbf24] px-6 py-4 rounded-lg mb-6">
+          <p className="font-medium">
+            {flaggedCount} assets flagged - discrepancy report generated automatically
+          </p>
+        </div>
+      )}
+
+      {canManage && (
+        <button 
+          onClick={handleCloseAudit}
+          disabled={!isAuditComplete || isClosing}
+          className={`px-6 py-2.5 rounded-lg text-white font-medium transition-colors ${
+            !isAuditComplete || isClosing ? 'bg-gray-400 cursor-not-allowed opacity-50' : 'bg-transparent border border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600'
+          }`}
+        >
+          {isClosing ? "Closing..." : "Close audit cycle"}
+        </button>
+      )}
+
     </div>
   );
 }

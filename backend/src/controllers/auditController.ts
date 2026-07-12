@@ -66,7 +66,20 @@ export const getAuditItems = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const query = `
-      SELECT ai.*, a.name as asset_name, a.tag as asset_tag, a.location
+      SELECT ai.*, a.name as asset_name, a.tag as asset_tag,
+             CASE 
+               WHEN a.status = 'allocated' THEN (
+                 SELECT d.name 
+                 FROM allocations al
+                 JOIN profiles p ON al.employee_id = p.id
+                 JOIN departments d ON p.department_id = d.id
+                 WHERE al.asset_id = a.id AND al.returned_at IS NULL
+                 ORDER BY al.allocated_at DESC
+                 LIMIT 1
+               )
+               WHEN a.status = 'maintenance' THEN 'Maintenance Room'
+               ELSE 'Warehouse'
+             END AS location
       FROM audit_items ai
       JOIN assets a ON ai.asset_id = a.id
       WHERE ai.cycle_id = $1
@@ -118,22 +131,29 @@ export const closeAudit = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Audit cycle not found' });
     }
 
-    // Auto-reconcile logic
-    const { rows: items } = await client.query(`SELECT * FROM audit_items WHERE cycle_id = $1`, [id]);
+    // Auto-reconcile logic using bulk queries for performance
     
-    for (const item of items) {
-      if (item.status === 'missing') {
-        await client.query(`UPDATE assets SET status = 'lost' WHERE id = $1`, [item.asset_id]);
-      } else if (item.status === 'damaged') {
-        await client.query(`UPDATE assets SET status = 'maintenance' WHERE id = $1`, [item.asset_id]);
-        
-        // Auto-create a maintenance ticket
-        await client.query(`
-          INSERT INTO maintenance (asset_id, description, status) 
-          VALUES ($1, 'Auto-generated from damaged audit report', 'scheduled')
-        `, [item.asset_id]);
-      }
-    }
+    // 1. Mark missing items as 'lost'
+    await client.query(`
+      UPDATE assets 
+      SET status = 'lost' 
+      WHERE id IN (SELECT asset_id FROM audit_items WHERE cycle_id = $1 AND status = 'missing')
+    `, [id]);
+
+    // 2. Mark damaged items as 'maintenance'
+    await client.query(`
+      UPDATE assets 
+      SET status = 'maintenance' 
+      WHERE id IN (SELECT asset_id FROM audit_items WHERE cycle_id = $1 AND status = 'damaged')
+    `, [id]);
+
+    // 3. Auto-create maintenance tickets for damaged items
+    await client.query(`
+      INSERT INTO maintenance (asset_id, description, status)
+      SELECT asset_id, 'Auto-generated from damaged audit report', 'scheduled'
+      FROM audit_items 
+      WHERE cycle_id = $1 AND status = 'damaged'
+    `, [id]);
 
     // Close the cycle
     await client.query(`

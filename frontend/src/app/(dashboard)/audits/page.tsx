@@ -50,13 +50,20 @@ export default function AuditsPage() {
     if (!newAuditName) return;
     
     try {
-      // Mocking passing all asset IDs to audit
+      // Fetch actual assets to assign to the audit
+      const assetsRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
+      let assetIds: string[] = [];
+      if (assetsRes.ok) {
+        const assetsData = await assetsRes.json();
+        assetIds = assetsData.map((a: any) => a.id);
+      }
+
       const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           name: newAuditName,
-          asset_ids: ["asset-1", "asset-2", "asset-3"] 
+          asset_ids: assetIds.length > 0 ? assetIds : [] 
         })
       });
       if (response.ok) {
