@@ -7,7 +7,10 @@ export const getEmployees = async (req: Request, res: Response) => {
     let query = 'SELECT id, full_name as name, email, role FROM profiles';
     const params: any[] = [];
 
-    if (role === 'employee' || role === 'department_head') {
+    if (role === 'employee') {
+      query += ' WHERE id = $1';
+      params.push(id);
+    } else if (role === 'department_head') {
       if (department_id) {
         query += ' WHERE department_id = $1';
         params.push(department_id);

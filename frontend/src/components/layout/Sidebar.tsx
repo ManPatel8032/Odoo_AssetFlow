@@ -71,44 +71,31 @@ export default function Sidebar() {
       <nav className={`flex-1 py-4 space-y-0.5 overflow-y-auto overflow-x-hidden ${collapsed ? "px-2" : "px-3"}`}>
         {navItems.map(({ href, label, icon: Icon, roles }) => {
           const hasAccess = !roles || roles.includes(role ?? "");
-          const active = pathname === href || pathname.startsWith(href + "/");
+          if (!hasAccess) return null;
           
-          const handleClick = (e: React.MouseEvent) => {
-            if (!hasAccess) {
-              e.preventDefault();
-              toast({
-                title: "Access Denied",
-                description: "You are not eligible to view this page.",
-                variant: "destructive"
-              });
-            }
-          };
+          const active = pathname === href || pathname.startsWith(href + "/");
 
           return (
             <Link
               key={href}
-              href={hasAccess ? href : "#"}
-              onClick={handleClick}
+              href={href}
               title={collapsed ? label : undefined}
               className={`flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-150 group ${
                 collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2.5"
               } ${
                 active
                   ? "bg-gray-700 text-white"
-                  : hasAccess
-                  ? "text-gray-400 hover:bg-gray-800 hover:text-white"
-                  : "text-gray-600 hover:bg-gray-900/40 cursor-not-allowed"
+                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
               }`}
             >
               <Icon
                 className={`w-5 h-5 flex-shrink-0 transition-colors ${
-                  active ? "text-gray-200" : hasAccess ? "text-gray-500 group-hover:text-gray-300" : "text-gray-700"
+                  active ? "text-gray-200" : "text-gray-500 group-hover:text-gray-300"
                 }`}
               />
               {!collapsed && (
                 <div className="flex items-center justify-between w-full min-w-0">
                   <span className="truncate">{label}</span>
-                  {!hasAccess && <Lock className="w-3.5 h-3.5 text-gray-700 ml-1.5 flex-shrink-0" />}
                 </div>
               )}
             </Link>

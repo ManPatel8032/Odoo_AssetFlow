@@ -16,12 +16,9 @@ interface BookingFormProps {
 
 export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFormProps) {
   const [assets, setAssets] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
   const [assetId, setAssetId] = useState("");
-  const [employeeId, setEmployeeId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
   const [endDate, setEndDate] = useState("");
@@ -32,7 +29,6 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
     if (open) {
       // Reset form
       setAssetId("");
-      setEmployeeId("");
       setStartDate("");
       setStartTime("09:00");
       setEndDate("");
@@ -40,7 +36,6 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
       setStatus("requested");
       setError("");
       fetchAssets();
-      fetchEmployees();
     }
   }, [open]);
 
@@ -57,24 +52,12 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
     }
   };
 
-  const fetchEmployees = async () => {
-    try {
-      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/employees`);
-      if (response.ok) {
-        const data = await response.json();
-        setEmployees(data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch employees", err);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    if (!assetId || !employeeId || !startDate || !startTime || !endDate || !endTime) {
+    if (!assetId || !startDate || !startTime || !endDate || !endTime) {
       setError("Please fill all fields.");
       setLoading(false);
       return;
@@ -93,7 +76,7 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
       const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ asset_id: assetId, employee_id: employeeId, start_time, end_time, status })
+        body: JSON.stringify({ asset_id: assetId, start_time, end_time, status })
       });
 
       if (!response.ok) {
@@ -139,26 +122,6 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
                   assets.map(a => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.name} ({a.tag})
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Book on behalf of (Employee)</Label>
-            <Select value={employeeId} onValueChange={setEmployeeId} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select an employee..." />
-              </SelectTrigger>
-              <SelectContent>
-                {employees.length === 0 ? (
-                  <SelectItem value="none" disabled>No employees found</SelectItem>
-                ) : (
-                  employees.map(emp => (
-                    <SelectItem key={emp.id} value={emp.id}>
-                      {emp.full_name || emp.name}
                     </SelectItem>
                   ))
                 )}

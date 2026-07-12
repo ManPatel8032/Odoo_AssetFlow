@@ -70,18 +70,16 @@ export const createBooking = async (req: Request, res: Response) => {
     
     await client.query('BEGIN');
     
-    // Only check for overlap if the booking is confirmed/active
-    if (status === 'confirmed' || status === 'active') {
-      const overlap = await client.query(
-        `SELECT 1 FROM bookings WHERE asset_id = $1 AND status IN ('confirmed', 'active')
-         AND (start_time, end_time) OVERLAPS ($2::timestamptz, $3::timestamptz)`,
-        [asset_id, start_time, end_time]
-      );
-      
-      if (overlap.rowCount > 0) {
-        await client.query('ROLLBACK');
-        return res.status(409).json({ error: 'This time slot is already booked.' });
-      }
+    // Check for overlap with any existing booking that is not cancelled or rejected
+    const overlap = await client.query(
+      `SELECT 1 FROM bookings WHERE asset_id = $1 AND status NOT IN ('cancelled', 'rejected')
+       AND (start_time, end_time) OVERLAPS ($2::timestamptz, $3::timestamptz)`,
+      [asset_id, start_time, end_time]
+    );
+    
+    if (overlap.rowCount > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'This time slot is already booked or requested.' });
     }
     
     // Insert the booking
@@ -137,12 +135,12 @@ export const updateBookingStatus = async (req: Request, res: Response) => {
     }
     const booking = bookingRes.rows[0];
 
-    // If changing to confirmed/active, check for overlap with other confirmed/active bookings
+    // If changing to confirmed/active, check for overlap with other non-cancelled bookings
     if (status === 'confirmed' || status === 'active') {
       const overlap = await client.query(
         `SELECT 1 FROM bookings 
          WHERE asset_id = $1 
-           AND status IN ('confirmed', 'active')
+           AND status NOT IN ('cancelled', 'rejected')
            AND id != $2
            AND (start_time, end_time) OVERLAPS ($3::timestamptz, $4::timestamptz)`,
         [booking.asset_id, id, booking.start_time, booking.end_time]
@@ -150,7 +148,7 @@ export const updateBookingStatus = async (req: Request, res: Response) => {
 
       if (overlap.rowCount > 0) {
         await client.query('ROLLBACK');
-        return res.status(409).json({ error: 'Cannot confirm booking. Overlaps with an already confirmed booking.' });
+        return res.status(409).json({ error: 'Cannot confirm booking. Overlaps with another existing booking.' });
       }
     }
 
