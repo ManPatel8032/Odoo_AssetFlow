@@ -1,35 +1,29 @@
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
-  const supabase = createClient();
 
   useEffect(() => {
-    // 1. Fetch initial notifications
     async function fetchNotifications() {
-      const { data } = await supabase
-        .from("notifications")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (data) setNotifications(data);
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/notifications`);
+        if (response.ok) {
+          const data = await response.json();
+          setNotifications(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch notifications', error);
+      }
     }
+
+    // 1. Fetch initial notifications
     fetchNotifications();
 
-    // 2. Subscribe to realtime changes
-    const channel = supabase
-      .channel("notifications_realtime")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications" },
-        (payload) => {
-          setNotifications((prev) => [payload.new, ...prev]);
-        }
-      )
-      .subscribe();
+    // 2. Poll for updates every 30 seconds
+    const intervalId = setInterval(fetchNotifications, 30000);
 
     return () => {
-      supabase.removeChannel(channel);
+      clearInterval(intervalId);
     };
   }, []);
 

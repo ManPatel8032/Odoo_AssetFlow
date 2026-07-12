@@ -1,2 +1,0 @@
-# Python requirements for backend (if applicable)
-# Note: The backend uses Supabase Edge Functions which are written in TypeScript and run on Deno. Dependencies are usually imported directly via URLs in the code (e.g., https://deno.land/...).

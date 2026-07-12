@@ -1,18 +1,22 @@
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 export function useAudits() {
   const [audits, setAudits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
 
   useEffect(() => {
     async function fetchAudits() {
-      const { data, error } = await supabase.from("audit_cycles").select("*");
-      if (!error && data) {
-        setAudits(data);
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits`);
+        if (response.ok) {
+          const data = await response.json();
+          setAudits(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch audits', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     fetchAudits();
   }, []);
