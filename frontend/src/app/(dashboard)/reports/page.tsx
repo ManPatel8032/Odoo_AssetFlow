@@ -4,10 +4,17 @@ import { useState, useEffect } from "react";
 import { fetchWithAuth } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, FileSpreadsheet, FileText, LayoutDashboard, AlertCircle } from "lucide-react";
-import { PieChart, Pie, Cell, Legend, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
+import { FileSpreadsheet, FileText, LayoutDashboard, AlertCircle } from "lucide-react";
+import { PieChart, Pie, Cell, Legend, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, BarChart, Bar } from 'recharts';
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6', '#f97316'];
+const STATUS_COLORS: Record<string, string> = {
+  'Available': '#10b981',
+  'Allocated': '#3b82f6',
+  'Maintenance': '#f59e0b',
+  'Disposed': '#ef4444',
+  'Booked': '#8b5cf6',
+};
+const BAR_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 export default function ReportsPage() {
   const [stats, setStats] = useState<any>(null);
@@ -58,6 +65,12 @@ export default function ReportsPage() {
     return <div className="p-6">Loading analytics...</div>;
   }
 
+  // Pie chart data: Asset Status Distribution from DB
+  const statusData = (stats?.statusDistribution || []).filter((d: any) => d.count > 0);
+
+  // Bar chart data: Department utilization from DB
+  const deptData = (stats?.utilizationByDepartment || []).filter((d: any) => d.count > 0);
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8">
       <div>
@@ -66,67 +79,104 @@ export default function ReportsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Utilization Chart */}
+        {/* Asset Status Distribution - Pie Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Utilization by department</CardTitle>
+            <CardTitle className="text-lg">Asset Status Distribution</CardTitle>
+            <CardDescription>Breakdown of all assets by current status</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
-              {stats?.utilizationByDepartment?.length > 0 ? (
+            <div className="h-72">
+              {statusData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={stats.utilizationByDepartment}
+                      data={statusData}
                       cx="50%"
                       cy="45%"
+                      innerRadius={50}
                       outerRadius={90}
+                      paddingAngle={3}
                       dataKey="count"
                       nameKey="name"
-                      labelLine={false}
+                      label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      labelLine={true}
                     >
-                      {stats.utilizationByDepartment.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      {statusData.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || BAR_COLORS[index % BAR_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip 
-                      formatter={(value: number) => [`${value} assets`, 'Allocated']}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                    <Tooltip
+                      formatter={(value: number, name: string) => [`${value} assets`, name]}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
-                    <Legend verticalAlign="bottom" height={20} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                    <Legend verticalAlign="bottom" height={30} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full flex items-center justify-center text-gray-400">No utilization data</div>
+                <div className="h-full flex items-center justify-center text-gray-400">No asset data available</div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Maintenance Frequency Chart */}
+        {/* Department Utilization - Bar Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Maintenance Frequency</CardTitle>
+            <CardTitle className="text-lg">Active Allocations by Department</CardTitle>
+            <CardDescription>Departments with currently allocated assets</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
-              {stats?.maintenanceFrequency?.length > 0 ? (
+            <div className="h-72">
+              {deptData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={stats.maintenanceFrequency} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <BarChart data={deptData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6b7280' }} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} allowDecimals={false} />
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Line type="monotone" dataKey="count" name="Tickets" stroke="#f97316" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
-                  </LineChart>
+                    <Tooltip
+                      formatter={(value: number) => [`${value} assets`, 'Allocated']}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Bar dataKey="count" name="Assets" radius={[6, 6, 0, 0]}>
+                      {deptData.map((_: any, index: number) => (
+                        <Cell key={`bar-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full flex items-center justify-center text-gray-400">No maintenance data</div>
+                <div className="h-full flex items-center justify-center text-gray-400">No department allocation data</div>
               )}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Maintenance Frequency - Line Chart (full width) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Maintenance Frequency</CardTitle>
+          <CardDescription>Maintenance tickets created per month (last 6 months)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64">
+            {stats?.maintenanceFrequency?.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={stats.maintenanceFrequency} margin={{ top: 10, right: 30, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} allowDecimals={false} />
+                  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  <Line type="monotone" dataKey="count" name="Tickets" stroke="#f97316" strokeWidth={3} dot={{ r: 5, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 7 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-400">No maintenance data</div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Most Used Assets */}
@@ -140,7 +190,7 @@ export default function ReportsPage() {
                 {stats.mostUsedAssets.map((asset: any, i: number) => (
                   <li key={i} className="flex flex-col text-sm">
                     <span className="font-medium text-gray-900">{asset.name} <span className="text-gray-500 font-normal">({asset.tag})</span></span>
-                    <span className="text-gray-500">{asset.uses} uses this month</span>
+                    <span className="text-gray-500">{asset.uses} total interactions</span>
                   </li>
                 ))}
               </ul>
@@ -161,7 +211,7 @@ export default function ReportsPage() {
                 {stats.idleAssets.map((asset: any, i: number) => (
                   <li key={i} className="flex flex-col text-sm">
                     <span className="font-medium text-gray-900">{asset.name} <span className="text-gray-500 font-normal">({asset.tag})</span></span>
-                    <span className="text-gray-500 text-amber-600">unused for {asset.idle_days || 0} days</span>
+                    <span className="text-amber-600">unused for {asset.idle_days} days</span>
                   </li>
                 ))}
               </ul>
@@ -183,7 +233,7 @@ export default function ReportsPage() {
                   <li key={`m-${i}`} className="flex flex-col text-sm">
                     <span className="font-medium text-gray-900">{asset.name} <span className="text-gray-500 font-normal">({asset.tag})</span></span>
                     <span className="text-red-600 font-medium flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" /> service due in {Math.max(0, asset.days_until)} days
+                      <AlertCircle className="w-3 h-3" /> service due in {asset.days_until} days
                     </span>
                   </li>
                 ))}

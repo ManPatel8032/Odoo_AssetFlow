@@ -3,13 +3,26 @@ import db from '../config/db';
 
 export const getUtilizationStats = async (req: Request, res: Response) => {
   try {
-    // 1. Utilization by department
+    // 1. Asset Status Distribution (for pie chart - always has meaningful data)
+    const statusDistRes = await db.query(`
+      SELECT status, COUNT(*)::int as count
+      FROM assets
+      GROUP BY status
+      ORDER BY count DESC
+    `);
+    const statusDistribution = statusDistRes.rows.map((r: any) => ({
+      name: r.status.charAt(0).toUpperCase() + r.status.slice(1),
+      count: parseInt(r.count)
+    }));
+
+    // 2. Utilization by department (only departments that have active allocations)
     const deptUtilizationRes = await db.query(`
-      SELECT d.name, COUNT(al.id) as count
+      SELECT d.name, COUNT(al.id)::int as count
       FROM departments d
-      LEFT JOIN profiles p ON p.department_id = d.id
-      LEFT JOIN allocations al ON al.employee_id = p.id AND al.returned_at IS NULL
+      JOIN profiles p ON p.department_id = d.id
+      JOIN allocations al ON al.employee_id = p.id AND al.returned_at IS NULL
       GROUP BY d.name
+      HAVING COUNT(al.id) > 0
       ORDER BY count DESC
     `);
     const utilizationByDepartment = deptUtilizationRes.rows.map((r: any) => ({
@@ -17,10 +30,10 @@ export const getUtilizationStats = async (req: Request, res: Response) => {
       count: parseInt(r.count)
     }));
 
-    // 2. Maintenance Frequency (last 6 months)
+    // 3. Maintenance Frequency (last 6 months)
     const maintFreqRes = await db.query(`
       SELECT TO_CHAR(DATE_TRUNC('month', created_at), 'Mon') as month, 
-             COUNT(id) as count
+             COUNT(id)::int as count
       FROM maintenance
       WHERE created_at >= DATE_TRUNC('month', NOW()) - INTERVAL '5 months'
       GROUP BY DATE_TRUNC('month', created_at)
@@ -31,49 +44,71 @@ export const getUtilizationStats = async (req: Request, res: Response) => {
       count: parseInt(r.count)
     }));
 
-    // 3. Most used assets
+    // 4. Most used assets (parsed as int)
     const mostUsedRes = await db.query(`
       SELECT a.name, a.tag, (
         (SELECT COUNT(*) FROM bookings b WHERE b.asset_id = a.id) +
         (SELECT COUNT(*) FROM allocations al WHERE al.asset_id = a.id)
-      ) as uses
+      )::int as uses
       FROM assets a
       ORDER BY uses DESC
       LIMIT 4
     `);
-    const mostUsedAssets = mostUsedRes.rows;
+    const mostUsedAssets = mostUsedRes.rows.map((r: any) => ({
+      name: r.name,
+      tag: r.tag,
+      uses: parseInt(r.uses)
+    }));
 
-    // 4. Idle assets
+    // 5. Idle assets - use last allocation return or last booking end, fallback to asset creation
     const idleAssetsRes = await db.query(`
-      SELECT name, tag, EXTRACT(DAY FROM (NOW() - created_at)) as idle_days
-      FROM assets
-      WHERE status = 'available'
+      SELECT a.name, a.tag,
+        GREATEST(1, EXTRACT(DAY FROM (NOW() - COALESCE(
+          (SELECT MAX(al.returned_at) FROM allocations al WHERE al.asset_id = a.id),
+          (SELECT MAX(b.end_time) FROM bookings b WHERE b.asset_id = a.id),
+          a.created_at
+        ))))::int as idle_days
+      FROM assets a
+      WHERE a.status = 'available'
       ORDER BY idle_days DESC
       LIMIT 4
     `);
-    const idleAssets = idleAssetsRes.rows;
+    const idleAssets = idleAssetsRes.rows.map((r: any) => ({
+      name: r.name,
+      tag: r.tag,
+      idle_days: parseInt(r.idle_days)
+    }));
 
-    // 5. Assets due for maintenance / nearing retirement
+    // 6. Assets due for maintenance / nearing retirement
     const maintenanceDueRes = await db.query(`
       SELECT a.name, a.tag, m.scheduled_date, 
-             EXTRACT(DAY FROM (m.scheduled_date - NOW())) as days_until
+             GREATEST(0, EXTRACT(DAY FROM (m.scheduled_date - NOW())))::int as days_until
       FROM maintenance m
       JOIN assets a ON m.asset_id = a.id
       WHERE m.status = 'scheduled' AND m.scheduled_date >= NOW()
       ORDER BY m.scheduled_date ASC
       LIMIT 4
     `);
-    const maintenanceDue = maintenanceDueRes.rows;
+    const maintenanceDue = maintenanceDueRes.rows.map((r: any) => ({
+      name: r.name,
+      tag: r.tag,
+      days_until: parseInt(r.days_until)
+    }));
 
     const retirementRes = await db.query(`
-      SELECT name, tag, EXTRACT(YEAR FROM AGE(NOW(), purchase_date)) as age_years
+      SELECT name, tag, EXTRACT(YEAR FROM AGE(NOW(), purchase_date))::int as age_years
       FROM assets
       WHERE purchase_date IS NOT NULL AND purchase_date <= NOW() - INTERVAL '3 years'
       LIMIT 4
     `);
-    const nearingRetirement = retirementRes.rows;
+    const nearingRetirement = retirementRes.rows.map((r: any) => ({
+      name: r.name,
+      tag: r.tag,
+      age_years: parseInt(r.age_years)
+    }));
 
     res.json({ 
+      statusDistribution,
       utilizationByDepartment,
       maintenanceFrequency,
       mostUsedAssets,
