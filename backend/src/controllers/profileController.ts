@@ -162,7 +162,7 @@ export const promoteUser = async (req: Request, res: Response) => {
     await db.query(
       `INSERT INTO activity_logs (id, profile_id, action, details)
        VALUES (gen_random_uuid(), $1, $2, $3)`,
-      [req.user?.id, 'role_change', JSON.stringify({ target_user: id, new_role: role })]
+      [req.user?.id, 'role_change', JSON.stringify({ target_user: rows[0].full_name, new_role: role })]
     );
 
     res.json({ message: `User role updated to ${role}`, user: rows[0] });

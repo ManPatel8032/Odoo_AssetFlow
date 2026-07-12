@@ -3,12 +3,27 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
+import { fetchWithAuth } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import { hasPermission } from "@/lib/permissions";
 
 export default function AuditsPage() {
   const [audits, setAudits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [newAuditName, setNewAuditName] = useState("");
+
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (!hasPermission(user.role, "audit_view")) {
+        router.replace("/dashboard");
+      }
+    }
+  }, [user, authLoading, router]);
 
   const fetchAudits = async () => {
     try {
@@ -25,8 +40,10 @@ export default function AuditsPage() {
   };
 
   useEffect(() => {
-    fetchAudits();
-  }, []);
+    if (user && hasPermission(user.role, "audit_view")) {
+      fetchAudits();
+    }
+  }, [user]);
 
   const handleCreateAudit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,19 +69,27 @@ export default function AuditsPage() {
     }
   };
 
+  if (authLoading || !user || !hasPermission(user.role, "audit_view")) {
+    return <div className="p-6">Loading...</div>;
+  }
+
+  const canManage = hasPermission(user.role, "audit_manage");
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Audit Cycles</h1>
-        <button 
-          onClick={() => setIsCreating(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-        >
-          New Audit Cycle
-        </button>
+        {canManage && (
+          <button 
+            onClick={() => setIsCreating(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          >
+            New Audit Cycle
+          </button>
+        )}
       </div>
 
-      {isCreating && (
+      {isCreating && canManage && (
         <div className="bg-white p-4 rounded-lg shadow mb-6 border border-gray-200">
           <h2 className="text-lg font-semibold mb-3">Create New Audit</h2>
           <form onSubmit={handleCreateAudit} className="flex gap-3">
@@ -134,5 +159,3 @@ export default function AuditsPage() {
     </div>
   );
 }
-
-import { fetchWithAuth } from "@/lib/api";

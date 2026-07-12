@@ -6,11 +6,17 @@ import MaintenanceForm from "../../../components/maintenance/MaintenanceForm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
+import { fetchWithAuth } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { hasPermission } from "@/lib/permissions";
 
 export default function MaintenancePage() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const { user } = useAuth();
+  
+  const canManage = user?.role ? hasPermission(user.role, "maintenance_manage") : false;
 
   const fetchTickets = async () => {
     try {
@@ -87,6 +93,7 @@ export default function MaintenancePage() {
                       key={ticket.id} 
                       ticket={ticket} 
                       onStatusChange={handleStatusChange} 
+                      canManage={canManage}
                     />
                   ))}
                   {colTickets.length === 0 && (
@@ -112,5 +119,3 @@ export default function MaintenancePage() {
     </div>
   );
 }
-
-import { fetchWithAuth } from "@/lib/api";

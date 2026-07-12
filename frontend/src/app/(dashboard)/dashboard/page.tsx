@@ -186,8 +186,19 @@ export default function DashboardPage() {
                     <p className="text-sm font-semibold text-gray-900 capitalize leading-none">
                       {activity.action.replace(/_/g, " ")}
                     </p>
-                    <p className="text-sm text-gray-600">
-                      {activity.details}
+                    <p className="text-sm text-gray-600 break-words pr-2">
+                      {(() => {
+                        if (!activity.details) return "No details provided";
+                        try {
+                          const parsed = JSON.parse(activity.details);
+                          if (typeof parsed === 'object' && parsed !== null) {
+                            return Object.entries(parsed)
+                              .map(([k, v]) => `${k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${v}`)
+                              .join(' • ');
+                          }
+                        } catch (e) {}
+                        return activity.details;
+                      })()}
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">

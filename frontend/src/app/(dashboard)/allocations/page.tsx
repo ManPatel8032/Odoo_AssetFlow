@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { fetchWithAuth } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Allocation = {
   id: string;
@@ -28,6 +30,8 @@ export default function AllocationsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canAllocate = user?.role === "admin" || user?.role === "asset_manager";
 
   // Form state
   const [assetId, setAssetId] = useState("");
@@ -141,66 +145,68 @@ export default function AllocationsPage() {
             </Button>
           </Link>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Allocate Asset
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Allocate Asset</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleAllocate} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Asset</label>
-                  <Select value={assetId} onValueChange={setAssetId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select available asset" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableAssets.length === 0 ? (
-                        <SelectItem value="none" disabled>No assets available</SelectItem>
-                      ) : (
-                        availableAssets.map((asset) => (
-                          <SelectItem key={asset.id} value={asset.id}>
-                            {asset.tag} - {asset.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Employee</label>
-                  <Select value={employeeId} onValueChange={setEmployeeId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select employee" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {employees.map((emp) => (
-                        <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Notes (Optional)</label>
-                  <Input 
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="e.g. New joining kit"
-                  />
-                </div>
-                <div className="flex justify-end space-x-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={isSubmitting || !assetId || !employeeId}>
-                    {isSubmitting ? "Allocating..." : "Allocate"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          {canAllocate && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" /> Allocate Asset
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Allocate Asset</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleAllocate} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Asset</label>
+                    <Select value={assetId} onValueChange={setAssetId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select available asset" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableAssets.length === 0 ? (
+                          <SelectItem value="none" disabled>No assets available</SelectItem>
+                        ) : (
+                          availableAssets.map((asset) => (
+                            <SelectItem key={asset.id} value={asset.id}>
+                              {asset.tag} - {asset.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Employee</label>
+                    <Select value={employeeId} onValueChange={setEmployeeId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select employee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Notes (Optional)</label>
+                    <Input 
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="e.g. New joining kit"
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                    <Button type="submit" disabled={isSubmitting || !assetId || !employeeId}>
+                      {isSubmitting ? "Allocating..." : "Allocate"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
@@ -266,5 +272,3 @@ export default function AllocationsPage() {
     </div>
   );
 }
-
-import { fetchWithAuth } from "@/lib/api";

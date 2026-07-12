@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { fetchWithAuth } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Transfer = {
   id: string;
@@ -27,6 +29,9 @@ export default function TransfersPage() {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  const canApprove = user?.role === 'admin' || user?.role === 'asset_manager' || user?.role === 'department_head';
 
   // For requesting new transfer
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -245,7 +250,7 @@ export default function TransfersPage() {
                     </TableCell>
                     <TableCell>{new Date(transfer.transferred_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right space-x-2">
-                      {transfer.status === 'pending' && (
+                      {transfer.status === 'pending' && canApprove && (
                         <>
                           <Button 
                             variant="ghost" 
@@ -278,5 +283,3 @@ export default function TransfersPage() {
     </div>
   );
 }
-
-import { fetchWithAuth } from "@/lib/api";

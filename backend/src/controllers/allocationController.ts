@@ -16,6 +16,7 @@ export const getAllocations = async (req: Request, res: Response) => {
        FROM allocations al
        JOIN assets a ON al.asset_id = a.id
        JOIN profiles p ON al.employee_id = p.id
+       WHERE al.returned_at IS NULL
        ORDER BY al.allocated_at DESC`
     );
     res.json(rows);

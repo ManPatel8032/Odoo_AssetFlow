@@ -1,11 +1,30 @@
-import React from "react";
+"use client";
+
+import React, { useEffect } from "react";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import { hasPermission } from "@/lib/permissions";
 
 export default function OrgSetupLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user) {
+      if (!hasPermission(user.role, "org_setup")) {
+        router.replace("/dashboard");
+      }
+    }
+  }, [user, loading, router]);
+
+  if (loading) return <div className="p-6">Loading...</div>;
+  if (!user || !hasPermission(user.role, "org_setup")) return null;
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Organization Setup</h1>
@@ -22,7 +41,7 @@ export default function OrgSetupLayout({
           </Link>
         </nav>
       </div>
-      <div>{children}</div>
+      <div className="pt-4">{children}</div>
     </div>
   );
 }

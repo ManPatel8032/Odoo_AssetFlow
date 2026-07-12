@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "manager" | "employee";
+export type UserRole = "admin" | "asset_manager" | "department_head" | "employee";
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   admin: [
@@ -8,15 +8,21 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "assets_edit",
     "assets_delete",
     "audit_manage",
-    "bookings_manage",
-    "maintenance_manage",
-  ],
-  manager: [
-    "assets_create",
-    "assets_edit",
     "audit_view",
     "bookings_manage",
     "maintenance_manage",
+  ],
+  asset_manager: [
+    "assets_create",
+    "assets_edit",
+    "audit_manage",
+    "audit_view",
+    "bookings_manage",
+    "maintenance_manage",
+  ],
+  department_head: [
+    "assets_view",
+    "bookings_manage", // e.g. approving bookings/transfers for their department
   ],
   employee: [
     "assets_view",

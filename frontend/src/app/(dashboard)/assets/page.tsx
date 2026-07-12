@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { hasPermission } from "@/lib/permissions";
 
 type Asset = {
   id: string;
@@ -45,6 +47,10 @@ export default function AssetsPage() {
   const [selectedDept, setSelectedDept] = useState("all");
 
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  const canCreate = user?.role ? hasPermission(user.role, "assets_create") : false;
+  const canEdit = user?.role ? hasPermission(user.role, "assets_edit") : false;
 
   useEffect(() => {
     fetchFilterOptions();
@@ -107,11 +113,13 @@ export default function AssetsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Assets</h1>
           <p className="text-muted-foreground mt-1">Register, browse, and track all physical assets and resources.</p>
         </div>
-        <Link href="/assets/new">
-          <Button className="h-10 px-4 bg-gray-900 hover:bg-gray-800 text-white rounded-xl shadow-sm">
-            <Plus className="mr-2 h-4 w-4" /> Register Asset
-          </Button>
-        </Link>
+        {canCreate && (
+          <Link href="/assets/new">
+            <Button className="h-10 px-4 bg-gray-900 hover:bg-gray-800 text-white rounded-xl shadow-sm">
+              <Plus className="mr-2 h-4 w-4" /> Register Asset
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Search and Filters Layout */}
@@ -235,11 +243,13 @@ export default function AssetsPage() {
                           <Eye className="h-4 w-4" />
                         </Button>
                       </Link>
-                      <Link href={`/assets/${asset.id}/edit`} title="Edit Asset">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-blue-600 rounded-lg">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </Link>
+                      {canEdit && (
+                        <Link href={`/assets/${asset.id}/edit`} title="Edit Asset">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-blue-600 rounded-lg">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

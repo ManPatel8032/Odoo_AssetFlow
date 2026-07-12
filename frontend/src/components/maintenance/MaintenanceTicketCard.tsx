@@ -6,7 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, ArrowRight, X } from "lucide-react";
 
-export default function MaintenanceTicketCard({ ticket, onStatusChange }: { ticket: any, onStatusChange: (id: string, status: string) => void }) {
+export default function MaintenanceTicketCard({ 
+  ticket, 
+  onStatusChange,
+  canManage = false 
+}: { 
+  ticket: any, 
+  onStatusChange: (id: string, status: string) => void,
+  canManage?: boolean
+}) {
   
   const getNextStatus = (currentStatus: string) => {
     switch (currentStatus) {
@@ -41,34 +49,36 @@ export default function MaintenanceTicketCard({ ticket, onStatusChange }: { tick
         </div>
       </CardContent>
 
-      <CardFooter className="p-4 pt-3 border-t bg-muted/10 flex justify-between gap-2">
-        {ticket.status !== 'cancelled' && ticket.status !== 'completed' ? (
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => onStatusChange(ticket.id, 'cancelled')}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2"
-            title="Cancel Ticket"
-          >
-            <X className="h-4 w-4 mr-1" />
-            Cancel
-          </Button>
-        ) : (
-          <div /> // Spacer
-        )}
-        
-        {nextStatus && (
-          <Button 
-            variant="secondary"
-            size="sm"
-            onClick={() => onStatusChange(ticket.id, nextStatus)}
-            className="h-8 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
-          >
-            {nextStatus === 'in_progress' ? 'Start Work' : 'Complete'}
-            <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-          </Button>
-        )}
-      </CardFooter>
+      {canManage && (
+        <CardFooter className="p-4 pt-3 border-t bg-muted/10 flex justify-between gap-2">
+          {ticket.status !== 'cancelled' && ticket.status !== 'completed' ? (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => onStatusChange(ticket.id, 'cancelled')}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2"
+              title="Cancel Ticket"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Cancel
+            </Button>
+          ) : (
+            <div /> // Spacer
+          )}
+          
+          {nextStatus && (
+            <Button 
+              variant="secondary"
+              size="sm"
+              onClick={() => onStatusChange(ticket.id, nextStatus)}
+              className="h-8 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
+            >
+              {nextStatus === 'in_progress' ? 'Start Work' : 'Complete'}
+              <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+            </Button>
+          )}
+        </CardFooter>
+      )}
     </Card>
   );
 }

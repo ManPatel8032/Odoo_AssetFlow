@@ -3,13 +3,25 @@ import { fetchWithAuth } from "@/lib/api";
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { hasPermission } from "@/lib/permissions";
 
 export default function AuditExecutionPage() {
   const { id } = useParams();
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (!hasPermission(user.role, "audit_view")) {
+        router.replace("/dashboard");
+      }
+    }
+  }, [user, authLoading, router]);
 
   const fetchItems = async () => {
     try {
@@ -26,8 +38,10 @@ export default function AuditExecutionPage() {
   };
 
   useEffect(() => {
-    if (id) fetchItems();
-  }, [id]);
+    if (id && user && hasPermission(user.role, "audit_view")) {
+      fetchItems();
+    }
+  }, [id, user]);
 
   const handleMarkStatus = async (itemId: string, status: string) => {
     try {
@@ -62,6 +76,11 @@ export default function AuditExecutionPage() {
     }
   };
 
+  if (authLoading || !user || !hasPermission(user.role, "audit_view")) {
+    return <div className="p-6">Loading...</div>;
+  }
+
+  const canManage = hasPermission(user.role, "audit_manage");
   const isAuditComplete = items.every(item => item.status !== 'pending');
 
   return (
@@ -74,18 +93,20 @@ export default function AuditExecutionPage() {
           <h1 className="text-2xl font-bold">Audit Execution Panel</h1>
           <p className="text-gray-500 text-sm">Review each item and mark its condition.</p>
         </div>
-        <button 
-          onClick={handleCloseAudit}
-          disabled={!isAuditComplete || isClosing}
-          className={`px-4 py-2 rounded-md text-white font-medium ${
-            !isAuditComplete || isClosing ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
-          }`}
-        >
-          {isClosing ? "Closing..." : "Close & Reconcile Audit"}
-        </button>
+        {canManage && (
+          <button 
+            onClick={handleCloseAudit}
+            disabled={!isAuditComplete || isClosing}
+            className={`px-4 py-2 rounded-md text-white font-medium ${
+              !isAuditComplete || isClosing ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+            }`}
+          >
+            {isClosing ? "Closing..." : "Close & Reconcile Audit"}
+          </button>
+        )}
       </div>
 
-      {!isAuditComplete && (
+      {!isAuditComplete && canManage && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 text-sm text-yellow-700">
           You must mark all items before you can close and reconcile this audit cycle.
         </div>
@@ -112,31 +133,34 @@ export default function AuditExecutionPage() {
               <div className="flex space-x-2">
                 <button 
                   onClick={() => handleMarkStatus(item.id, 'verified')}
+                  disabled={!canManage}
                   className={`px-4 py-2 rounded border text-sm font-medium flex items-center transition-colors ${
                     item.status === 'verified' 
                       ? 'bg-green-100 border-green-500 text-green-700' 
                       : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
+                  } ${!canManage ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   ✅ Verified
                 </button>
                 <button 
                   onClick={() => handleMarkStatus(item.id, 'missing')}
+                  disabled={!canManage}
                   className={`px-4 py-2 rounded border text-sm font-medium flex items-center transition-colors ${
                     item.status === 'missing' 
                       ? 'bg-red-100 border-red-500 text-red-700' 
                       : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
+                  } ${!canManage ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   ❌ Missing
                 </button>
                 <button 
                   onClick={() => handleMarkStatus(item.id, 'damaged')}
+                  disabled={!canManage}
                   className={`px-4 py-2 rounded border text-sm font-medium flex items-center transition-colors ${
                     item.status === 'damaged' 
                       ? 'bg-orange-100 border-orange-500 text-orange-700' 
                       : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
+                  } ${!canManage ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   ⚠️ Damaged
                 </button>
