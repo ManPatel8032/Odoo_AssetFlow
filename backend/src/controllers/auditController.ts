@@ -1,52 +1,17 @@
 import { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-
-// In-memory mock data for audits
-let mockAuditCycles: any[] = [
-  {
-    id: 'audit-1',
-    name: 'Q3 IT Equipment Audit',
-    start_date: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
-    end_date: null,
-    status: 'active'
-  }
-];
-
-let mockAuditItems: any[] = [
-  {
-    id: 'item-1',
-    cycle_id: 'audit-1',
-    asset_id: 'asset-1',
-    asset_name: 'Dell XPS 15',
-    asset_tag: 'AF-0001',
-    location: 'Building A, Room 101',
-    audited_by: null,
-    audited_at: null,
-    status: 'pending',
-    notes: ''
-  },
-  {
-    id: 'item-2',
-    cycle_id: 'audit-1',
-    asset_id: 'asset-3',
-    asset_name: 'Company Projector',
-    asset_tag: 'AF-0003',
-    location: 'Conference Room B',
-    audited_by: null,
-    audited_at: null,
-    status: 'pending',
-    notes: ''
-  }
-];
+import db from '../config/db';
 
 export const getAudits = async (req: Request, res: Response) => {
   try {
-    // Add item count to each cycle
-    const cyclesWithCounts = mockAuditCycles.map(cycle => {
-      const itemCount = mockAuditItems.filter(item => item.cycle_id === cycle.id).length;
-      return { ...cycle, itemCount };
-    });
-    res.json(cyclesWithCounts);
+    const query = `
+      SELECT ac.*, COUNT(ai.id) as "itemCount"
+      FROM audit_cycles ac
+      LEFT JOIN audit_items ai ON ac.id = ai.cycle_id
+      GROUP BY ac.id
+      ORDER BY ac.start_date DESC
+    `;
+    const { rows } = await db.query(query);
+    res.json(rows);
   } catch (error) {
     console.error('Error fetching audits:', error);
     res.status(500).json({ error: 'Failed to fetch audits' });
@@ -54,55 +19,60 @@ export const getAudits = async (req: Request, res: Response) => {
 };
 
 export const createAudit = async (req: Request, res: Response) => {
+  const client = await db.connect();
   try {
     const { name, asset_ids } = req.body;
     
-    const newCycle = {
-      id: uuidv4(),
-      name,
-      start_date: new Date().toISOString(),
-      end_date: null,
-      status: 'active'
-    };
-    mockAuditCycles.push(newCycle);
+    await client.query('BEGIN');
 
-    // Mock asset list
-    const assets = [
-      { id: "asset-1", name: "Dell XPS 15", tag: "AF-0001", location: "Building A" },
-      { id: "asset-2", name: "Conference Room A", tag: "AF-0002", location: "Building A" },
-      { id: "asset-3", name: "Company Projector", tag: "AF-0003", location: "Building B" }
-    ];
+    // Insert cycle
+    const cycleRes = await client.query(
+      `INSERT INTO audit_cycles (name, status) VALUES ($1, 'active') RETURNING *`,
+      [name]
+    );
+    const newCycle = cycleRes.rows[0];
 
-    if (asset_ids && Array.isArray(asset_ids)) {
+    // Insert items if asset_ids provided
+    if (asset_ids && Array.isArray(asset_ids) && asset_ids.length > 0) {
+      // Build a parameterized query for bulk insert
+      const values = [];
+      const queryParams = [];
+      let i = 1;
+
       for (const asset_id of asset_ids) {
-        const asset = assets.find(a => a.id === asset_id) || { name: 'Unknown', tag: 'AF-????', location: 'Unknown' };
-        mockAuditItems.push({
-          id: uuidv4(),
-          cycle_id: newCycle.id,
-          asset_id,
-          asset_name: asset.name,
-          asset_tag: asset.tag,
-          location: asset.location,
-          audited_by: null,
-          audited_at: null,
-          status: 'pending',
-          notes: ''
-        });
+        values.push(`($${i}, $${i+1}, 'pending')`);
+        queryParams.push(newCycle.id, asset_id);
+        i += 2;
       }
+
+      await client.query(
+        `INSERT INTO audit_items (cycle_id, asset_id, status) VALUES ${values.join(', ')}`,
+        queryParams
+      );
     }
 
+    await client.query('COMMIT');
     res.status(201).json(newCycle);
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error creating audit:', error);
     res.status(500).json({ error: 'Failed to create audit' });
+  } finally {
+    client.release();
   }
 };
 
 export const getAuditItems = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const items = mockAuditItems.filter(item => item.cycle_id === id);
-    res.json(items);
+    const query = `
+      SELECT ai.*, a.name as asset_name, a.tag as asset_tag, a.location
+      FROM audit_items ai
+      JOIN assets a ON ai.asset_id = a.id
+      WHERE ai.cycle_id = $1
+    `;
+    const { rows } = await db.query(query, [id]);
+    res.json(rows);
   } catch (error) {
     console.error('Error fetching audit items:', error);
     res.status(500).json({ error: 'Failed to fetch audit items' });
@@ -113,18 +83,22 @@ export const updateAuditItem = async (req: Request, res: Response) => {
   try {
     const { id, itemId } = req.params;
     const { status, notes } = req.body;
+    const auditorId = req.user?.id || '00000000-0000-0000-0000-000000000000';
     
-    const item = mockAuditItems.find(i => i.id === itemId && i.cycle_id === id);
-    if (!item) {
+    const query = `
+      UPDATE audit_items 
+      SET status = $1, notes = $2, audited_by = $3, audited_at = CURRENT_TIMESTAMP
+      WHERE id = $4 AND cycle_id = $5
+      RETURNING *
+    `;
+    
+    const { rows } = await db.query(query, [status, notes || '', auditorId, itemId, id]);
+    
+    if (rows.length === 0) {
       return res.status(404).json({ error: 'Audit item not found' });
     }
 
-    item.status = status;
-    item.notes = notes || '';
-    item.audited_by = req.user?.id || 'mock-auditor-123';
-    item.audited_at = new Date().toISOString();
-
-    res.json(item);
+    res.json(rows[0]);
   } catch (error) {
     console.error('Error updating audit item:', error);
     res.status(500).json({ error: 'Failed to update audit item' });
@@ -132,32 +106,49 @@ export const updateAuditItem = async (req: Request, res: Response) => {
 };
 
 export const closeAudit = async (req: Request, res: Response) => {
+  const client = await db.connect();
   try {
     const { id } = req.params;
-    const cycle = mockAuditCycles.find(c => c.id === id);
     
-    if (!cycle) {
+    await client.query('BEGIN');
+
+    const cycleRes = await client.query(`SELECT * FROM audit_cycles WHERE id = $1`, [id]);
+    if (cycleRes.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Audit cycle not found' });
     }
 
-    // Auto-reconcile mock logic
-    const items = mockAuditItems.filter(i => i.cycle_id === id);
+    // Auto-reconcile logic
+    const { rows: items } = await client.query(`SELECT * FROM audit_items WHERE cycle_id = $1`, [id]);
+    
     for (const item of items) {
       if (item.status === 'missing') {
-        // Mock updating asset status to 'lost'
-        console.log(`Auto-reconcile: Marked asset ${item.asset_id} as LOST`);
+        await client.query(`UPDATE assets SET status = 'lost' WHERE id = $1`, [item.asset_id]);
       } else if (item.status === 'damaged') {
-        // Mock updating asset status to 'maintenance' and creating ticket
-        console.log(`Auto-reconcile: Marked asset ${item.asset_id} as MAINTENANCE and created ticket`);
+        await client.query(`UPDATE assets SET status = 'maintenance' WHERE id = $1`, [item.asset_id]);
+        
+        // Auto-create a maintenance ticket
+        await client.query(`
+          INSERT INTO maintenance (asset_id, description, status) 
+          VALUES ($1, 'Auto-generated from damaged audit report', 'scheduled')
+        `, [item.asset_id]);
       }
     }
 
-    cycle.status = 'closed';
-    cycle.end_date = new Date().toISOString();
+    // Close the cycle
+    await client.query(`
+      UPDATE audit_cycles 
+      SET status = 'closed', end_date = CURRENT_TIMESTAMP 
+      WHERE id = $1
+    `, [id]);
 
+    await client.query('COMMIT');
     res.json({ message: 'Audit closed and reconciled successfully' });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error closing audit:', error);
     res.status(500).json({ error: 'Failed to close audit' });
+  } finally {
+    client.release();
   }
 };

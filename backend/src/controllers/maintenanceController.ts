@@ -1,39 +1,16 @@
 import { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-
-// In-memory mock data for maintenance tickets
-let mockMaintenance: any[] = [
-  {
-    id: 'maint-1',
-    asset_id: 'asset-1',
-    asset_name: 'Dell XPS 15',
-    asset_tag: 'AF-0001',
-    description: 'Screen flickering occasionally',
-    scheduled_date: new Date().toISOString(),
-    completed_date: null,
-    status: 'scheduled',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'maint-2',
-    asset_id: 'asset-3',
-    asset_name: 'Company Projector',
-    asset_tag: 'AF-0003',
-    description: 'Bulb replacement required',
-    scheduled_date: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
-    completed_date: null,
-    status: 'in_progress',
-    created_at: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString()
-  }
-];
+import db from '../config/db';
 
 export const getMaintenance = async (req: Request, res: Response) => {
   try {
-    // Sort by created_at descending
-    const sorted = [...mockMaintenance].sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-    res.json(sorted);
+    const query = `
+      SELECT m.*, a.name as asset_name, a.tag as asset_tag 
+      FROM maintenance m
+      LEFT JOIN assets a ON m.asset_id = a.id
+      ORDER BY m.created_at DESC
+    `;
+    const { rows } = await db.query(query);
+    res.json(rows);
   } catch (error) {
     console.error('Error fetching maintenance:', error);
     res.status(500).json({ error: 'Failed to fetch maintenance' });
@@ -44,23 +21,29 @@ export const createMaintenance = async (req: Request, res: Response) => {
   try {
     const { asset_id, description, scheduled_date } = req.body;
     
-    // In a real app we would lookup the asset name/tag from the DB here
-    const newTicket = {
-      id: uuidv4(),
-      asset_id,
-      asset_name: 'Mock Asset ' + asset_id.substring(0, 4),
-      asset_tag: 'AF-' + Math.floor(Math.random() * 10000).toString().padStart(4, '0'),
-      description,
-      scheduled_date,
-      completed_date: null,
-      status: 'scheduled',
-      created_at: new Date().toISOString()
-    };
-
-    mockMaintenance.push(newTicket);
-    res.status(201).json(newTicket);
-  } catch (error) {
+    // In actual SQL, asset_id is required
+    const query = `
+      INSERT INTO maintenance (asset_id, description, scheduled_date, status) 
+      VALUES ($1, $2, $3, 'scheduled') 
+      RETURNING *
+    `;
+    
+    const { rows } = await db.query(query, [asset_id, description, scheduled_date]);
+    
+    // Fetch the asset info to return a complete object to the frontend
+    const ticket = rows[0];
+    const assetRes = await db.query('SELECT name, tag FROM assets WHERE id = $1', [asset_id]);
+    if (assetRes.rows.length > 0) {
+      ticket.asset_name = assetRes.rows[0].name;
+      ticket.asset_tag = assetRes.rows[0].tag;
+    }
+    
+    res.status(201).json(ticket);
+  } catch (error: any) {
     console.error('Error creating maintenance ticket:', error);
+    if (error.code === '23503') {
+      return res.status(400).json({ error: 'Invalid asset ID.' });
+    }
     res.status(500).json({ error: 'Failed to create maintenance ticket' });
   }
 };
@@ -75,21 +58,31 @@ export const updateMaintenanceStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid status' });
     }
 
-    const ticket = mockMaintenance.find(t => t.id === id);
-    if (!ticket) {
+    let query = `UPDATE maintenance SET status = $1`;
+    const params: any[] = [status, id];
+
+    if (status === 'completed') {
+      query += `, completed_date = CURRENT_TIMESTAMP`;
+    } else {
+      query += `, completed_date = NULL`;
+    }
+
+    query += ` WHERE id = $2 RETURNING *`;
+
+    const { rows } = await db.query(query, params);
+    
+    if (rows.length === 0) {
       return res.status(404).json({ error: 'Maintenance ticket not found' });
     }
 
-    ticket.status = status;
-    if (status === 'completed') {
-      ticket.completed_date = new Date().toISOString();
-    } else {
-      ticket.completed_date = null;
-    }
+    const ticket = rows[0];
 
-    // In a real app, we would also update the asset's status here 
-    // e.g. if 'in_progress', asset status = 'maintenance'
-    // e.g. if 'completed', asset status = 'available'
+    // Update asset status based on maintenance workflow
+    if (status === 'in_progress') {
+      await db.query(`UPDATE assets SET status = 'maintenance' WHERE id = $1`, [ticket.asset_id]);
+    } else if (status === 'completed') {
+      await db.query(`UPDATE assets SET status = 'available' WHERE id = $1`, [ticket.asset_id]);
+    }
 
     res.json(ticket);
   } catch (error) {
