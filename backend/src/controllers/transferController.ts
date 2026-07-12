@@ -116,27 +116,76 @@ export const requestTransfer = async (req: Request, res: Response) => {
       return;
     }
 
-    // 5. Create the transfer request
-    const transferResult = await client.query(
-      `INSERT INTO transfers (asset_id, from_employee_id, to_employee_id, status)
-       VALUES ($1, $2, $3, 'pending')
-       RETURNING *`,
-      [asset_id, from_employee_id, to_employee_id]
-    );
+    const userRole = req.user?.role;
+    const isManager = userRole === 'admin' || userRole === 'asset_manager' || userRole === 'department_head';
 
-    await client.query('COMMIT');
+    if (isManager) {
+      // Direct transfer
+      const transferResult = await client.query(
+        `INSERT INTO transfers (asset_id, from_employee_id, to_employee_id, status)
+         VALUES ($1, $2, $3, 'approved')
+         RETURNING *`,
+        [asset_id, from_employee_id, to_employee_id]
+      );
+      
+      const transferId = transferResult.rows[0].id;
 
-    // Notify the current holder that a transfer is requested
-    await createNotification(
-      from_employee_id,
-      'Asset Transfer Requested',
-      `A transfer has been requested for your allocated asset "${asset.name}" (${asset.tag}).`
-    );
+      // Close old allocation
+      await client.query(
+        `UPDATE allocations
+         SET returned_at = NOW(), notes = COALESCE(notes, '') || ' | Transferred via direct transfer #' || $1
+         WHERE asset_id = $2 AND returned_at IS NULL`,
+        [transferId, asset_id]
+      );
 
-    res.status(201).json({
-      message: 'Transfer request created successfully',
-      transfer: transferResult.rows[0],
-    });
+      // Create new allocation
+      await client.query(
+        `INSERT INTO allocations (asset_id, employee_id, notes)
+         VALUES ($1, $2, $3)`,
+        [asset_id, to_employee_id, `Received via direct transfer #${transferId}`]
+      );
+
+      await client.query('COMMIT');
+
+      await createNotification(
+        from_employee_id,
+        'Asset Transferred Away',
+        `Your asset "${asset.name}" (${asset.tag}) has been transferred to another employee.`
+      );
+
+      await createNotification(
+        to_employee_id,
+        'Asset Transferred To You',
+        `An asset "${asset.name}" (${asset.tag}) has been directly transferred to you.`
+      );
+
+      res.status(201).json({
+        message: 'Asset transferred successfully',
+        transfer: transferResult.rows[0],
+      });
+    } else {
+      // Normal employee requesting a transfer (Pending state)
+      const transferResult = await client.query(
+        `INSERT INTO transfers (asset_id, from_employee_id, to_employee_id, status)
+         VALUES ($1, $2, $3, 'pending')
+         RETURNING *`,
+        [asset_id, from_employee_id, to_employee_id]
+      );
+
+      await client.query('COMMIT');
+
+      // Notify the current holder that a transfer is requested
+      await createNotification(
+        from_employee_id,
+        'Asset Transfer Requested',
+        `A transfer has been requested for your allocated asset "${asset.name}" (${asset.tag}).`
+      );
+
+      res.status(201).json({
+        message: 'Transfer request created successfully',
+        transfer: transferResult.rows[0],
+      });
+    }
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error creating transfer request:', error);

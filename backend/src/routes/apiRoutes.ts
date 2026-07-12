@@ -7,7 +7,7 @@ import { signup, login, getMe } from '../controllers/authController';
 import { getAssets, getAssetById, createAsset, updateAsset, deleteAsset } from '../controllers/assetController';
 
 // Allocations
-import { getAllocations, createAllocation, returnAsset } from '../controllers/allocationController';
+import { getAllocations, createAllocation, returnAsset, getAssetAllocationHistory } from '../controllers/allocationController';
 
 // Transfers
 import { getTransfers, requestTransfer, approveTransfer, rejectTransfer } from '../controllers/transferController';
@@ -68,7 +68,8 @@ router.delete('/assets/:id', authMiddleware, requireRole('admin', 'asset_manager
 // ─── Allocations (read: any | write: admin + asset_manager) ─────────────────
 router.get('/allocations', authMiddleware, getAllocations);
 router.post('/allocations', authMiddleware, requireRole('admin', 'asset_manager'), createAllocation);
-router.put('/allocations/:id/return', authMiddleware, returnAsset);
+router.put('/allocations/:id/return', authMiddleware, requireRole('admin', 'asset_manager'), returnAsset);
+router.get('/allocations/asset/:id/history', authMiddleware, getAssetAllocationHistory);
 
 // ─── Transfers (any authenticated user can request/view) ────────────────────
 router.get('/transfers', authMiddleware, getTransfers);

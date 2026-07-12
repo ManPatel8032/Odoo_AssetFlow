@@ -200,3 +200,29 @@ export const returnAsset = async (req: Request, res: Response) => {
     client.release();
   }
 };
+
+// ─── GET /api/allocations/asset/:id/history ─────────────────────────────────
+// Fetches the allocation and return history for a specific asset
+export const getAssetAllocationHistory = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // We want to fetch both active and past allocations for this asset
+    const { rows } = await db.query(
+      `SELECT al.*, 
+              p.full_name AS employee_name,
+              d.name AS department_name
+       FROM allocations al
+       LEFT JOIN profiles p ON al.employee_id = p.id
+       LEFT JOIN departments d ON p.department_id = d.id
+       WHERE al.asset_id = $1
+       ORDER BY al.allocated_at DESC`,
+      [id]
+    );
+    
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching asset allocation history:', error);
+    res.status(500).json({ error: 'Failed to fetch asset allocation history' });
+  }
+};

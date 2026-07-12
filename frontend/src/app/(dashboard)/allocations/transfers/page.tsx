@@ -143,59 +143,6 @@ export default function TransfersPage() {
           </Link>
           <h1 className="text-3xl font-bold tracking-tight">Transfer Requests</h1>
         </div>
-        
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Request Transfer
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Request Asset Transfer</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleRequestTransfer} className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Allocated Asset</label>
-                <Select value={assetId} onValueChange={setAssetId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select asset to transfer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allocatedAssets.length === 0 ? (
-                      <SelectItem value="none" disabled>No allocated assets</SelectItem>
-                    ) : (
-                      allocatedAssets.map((asset) => (
-                        <SelectItem key={asset.id} value={asset.id}>
-                          {asset.tag} - {asset.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">To Employee</label>
-                <Select value={toEmployeeId} onValueChange={setToEmployeeId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select receiving employee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees.map((emp) => (
-                      <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={isSubmitting || !assetId || !toEmployeeId}>
-                  {isSubmitting ? "Requesting..." : "Submit Request"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
 
       <Card>
