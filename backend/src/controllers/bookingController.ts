@@ -1,8 +1,6 @@
 import { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid'; // We need uuid for generating mock IDs
-
-// In-memory mock data removed
 import db from '../config/db';
+
 
 export const getBookings = async (req: Request, res: Response) => {
   try {
