@@ -6,15 +6,28 @@ import db from '../config/db';
 export const getAssets = async (req: Request, res: Response) => {
   try {
     const { status, category_id, search } = req.query;
+    const { role, id: userId, department_id } = req.user!;
 
     let query = `
-      SELECT a.*, c.name AS category_name
+      SELECT DISTINCT a.*, c.name AS category_name
       FROM assets a
       LEFT JOIN categories c ON a.category_id = c.id
     `;
     const conditions: string[] = [];
-    const params: (string | undefined)[] = [];
+    const params: any[] = [];
     let paramIndex = 1;
+
+    // RBAC Joins & Conditions
+    if (role === 'employee') {
+      query += ` LEFT JOIN allocations al ON a.id = al.asset_id AND al.returned_at IS NULL`;
+      conditions.push(`(al.employee_id = $${paramIndex++} OR a.status = 'available')`);
+      params.push(userId);
+    } else if (role === 'department_head') {
+      query += ` LEFT JOIN allocations al ON a.id = al.asset_id AND al.returned_at IS NULL`;
+      query += ` LEFT JOIN profiles p ON al.employee_id = p.id`;
+      conditions.push(`(p.department_id = $${paramIndex++} OR a.status = 'available')`);
+      params.push(department_id);
+    }
 
     if (status && typeof status === 'string') {
       conditions.push(`a.status = $${paramIndex++}`);

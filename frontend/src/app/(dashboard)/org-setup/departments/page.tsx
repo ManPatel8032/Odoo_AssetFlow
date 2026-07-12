@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
 
@@ -24,6 +25,7 @@ type Employee = {
 };
 
 export default function DepartmentsPage() {
+  const { user } = useAuth();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -117,47 +119,49 @@ export default function DepartmentsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Departments</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="mr-2 h-4 w-4" /> Add Department
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingDept ? "Edit Department" : "Add Department"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSave} className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Department Name</label>
-                <Input 
-                  value={deptName}
-                  onChange={(e) => setDeptName(e.target.value)}
-                  placeholder="e.g. Engineering"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Department Head</label>
-                <Select value={headId} onValueChange={setHeadId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a head (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {employees.map(emp => (
-                      <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button type="submit">Save</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        {user?.role === 'admin' && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => handleOpenDialog()}>
+                <Plus className="mr-2 h-4 w-4" /> Add Department
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingDept ? "Edit Department" : "Add Department"}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSave} className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Department Name</label>
+                  <Input 
+                    value={deptName}
+                    onChange={(e) => setDeptName(e.target.value)}
+                    placeholder="e.g. Engineering"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Department Head</label>
+                  <Select value={headId} onValueChange={setHeadId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a head (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {employees.map(emp => (
+                        <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                  <Button type="submit">Save</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <Card>
@@ -170,7 +174,7 @@ export default function DepartmentsPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Department Head</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                {user?.role === 'admin' && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -199,11 +203,13 @@ export default function DepartmentsPage() {
                         <span className="text-muted-foreground text-sm">Unassigned</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(dept)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+                    {user?.role === 'admin' && (
+                      <TableCell className="text-right space-x-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(dept)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}

@@ -24,7 +24,7 @@ const navItems = [
   { href: "/maintenance", label: "Maintenance", icon: Wrench },
   { href: "/audits", label: "Audits", icon: ClipboardCheck, roles: ["admin", "asset_manager"] },
   { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/org-setup/departments", label: "Org Setup", icon: Settings, roles: ["admin"] },
+  { href: "/org-setup/departments", label: "Org Setup", icon: Settings, roles: ["admin", "department_head"] },
 ];
 
 export default function Sidebar() {

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
 
@@ -25,6 +26,7 @@ type Department = {
 };
 
 export default function EmployeesPage() {
+  const { user } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -79,7 +81,7 @@ export default function EmployeesPage() {
       
       try {
         const payload: any = { role: newRole };
-        if (newRole === 'department_head') {
+        if (selectedDeptId !== 'none') {
           payload.department_id = selectedDeptId;
         }
         
@@ -153,7 +155,7 @@ export default function EmployeesPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update Employee Role</DialogTitle>
+            <DialogTitle>Manage Employee</DialogTitle>
           </DialogHeader>
           <form onSubmit={handlePromote} className="space-y-4 pt-4">
             <div className="space-y-2">
@@ -174,26 +176,24 @@ export default function EmployeesPage() {
               </Select>
             </div>
             
-            {newRole === 'department_head' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Select Department</label>
-                <Select value={selectedDeptId} onValueChange={setSelectedDeptId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none" disabled>Select a department...</SelectItem>
-                    {departments.map(dept => (
-                      <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Department</label>
+              <Select value={selectedDeptId} onValueChange={setSelectedDeptId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Unassigned / No Change</SelectItem>
+                  {departments.map(dept => (
+                    <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             
             <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-              <Button type="submit">Update Role</Button>
+              <Button type="submit">Save Changes</Button>
             </div>
           </form>
         </DialogContent>
@@ -252,10 +252,12 @@ export default function EmployeesPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleOpenPromoteDialog(emp)}>
-                        <ShieldAlert className="h-4 w-4 mr-1" />
-                        Promote
-                      </Button>
+                      {user?.role === 'admin' && (
+                        <Button variant="outline" size="sm" onClick={() => handleOpenPromoteDialog(emp)}>
+                          <ShieldAlert className="h-4 w-4 mr-1" />
+                          Manage
+                        </Button>
+                      )}
                       <Button 
                         variant={emp.status === 'active' ? 'ghost' : 'default'} 
                         size="sm" 
