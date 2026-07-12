@@ -105,10 +105,10 @@ router.get('/employees', authMiddleware, getEmployees);
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ─── Profiles / Employee Directory ──────────────────────────────────────────
-router.get('/profiles', authMiddleware, requireRole('admin'), getProfiles);
-router.get('/profiles/:id', authMiddleware, requireRole('admin'), getProfileById);
+router.get('/profiles', authMiddleware, requireRole('admin', 'department_head', 'employee', 'asset_manager'), getProfiles);
+router.get('/profiles/:id', authMiddleware, requireRole('admin', 'department_head', 'employee', 'asset_manager'), getProfileById);
 router.put('/profiles/:id/promote', authMiddleware, requireRole('admin'), promoteUser);
-router.put('/profiles/:id/deactivate', authMiddleware, requireRole('admin'), deactivateUser);
+router.put('/profiles/:id/deactivate', authMiddleware, requireRole('admin', 'department_head'), deactivateUser);
 
 // ─── Departments ────────────────────────────────────────────────────────────
 router.get('/departments', authMiddleware, getDepartments);

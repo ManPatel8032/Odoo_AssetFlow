@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { fetchWithAuth } from "@/lib/api";
 import Link from "next/link";
@@ -29,6 +30,7 @@ type Employee = {
 };
 
 export default function DepartmentsPage() {
+  const { user } = useAuth();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -52,8 +54,8 @@ export default function DepartmentsPage() {
     setLoading(true);
     try {
       const [deptRes, empRes] = await Promise.all([
-        fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/departments`),
-        fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/employees`)
+        fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/departments`),
+        fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/employees`)
       ]);
       
       if (deptRes.ok && empRes.ok) {
@@ -103,12 +105,12 @@ export default function DepartmentsPage() {
 
       let res;
       if (editingDept) {
-        res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/departments/${editingDept.id}`, {
+        res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/departments/${editingDept.id}`, {
           method: "PUT",
           body: JSON.stringify(payload),
         });
       } else {
-        res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/departments`, {
+        res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/departments`, {
           method: "POST",
           body: JSON.stringify(payload),
         });
@@ -159,82 +161,84 @@ export default function DepartmentsPage() {
           })}
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()} className="h-10 px-4 bg-gray-900 hover:bg-gray-800 text-white rounded-xl shadow-sm">
-              <Plus className="mr-2 h-4 w-4" /> Add Department
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md rounded-xl">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">{editingDept ? "Edit Department" : "Add Department"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSave} className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">Department Name</label>
-                <Input 
-                  value={deptName}
-                  onChange={(e) => setDeptName(e.target.value)}
-                  placeholder="e.g. Engineering"
-                  required
-                  className="rounded-lg border-gray-250 h-10"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">Department Head</label>
-                <Select value={headId} onValueChange={setHeadId}>
-                  <SelectTrigger className="rounded-lg h-10 border-gray-250">
-                    <SelectValue placeholder="Select a head (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {employees.map(emp => (
-                      <SelectItem key={emp.id} value={emp.id}>{emp.full_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">Parent Department</label>
-                <Select value={parentId} onValueChange={setParentId}>
-                  <SelectTrigger className="rounded-lg h-10 border-gray-250">
-                    <SelectValue placeholder="Select parent department (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {departments
-                      .filter(d => !editingDept || d.id !== editingDept.id)
-                      .map(dept => (
-                        <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {editingDept && (
+        {user?.role === 'admin' && (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => handleOpenDialog()} className="h-10 px-4 bg-gray-900 hover:bg-gray-800 text-white rounded-xl shadow-sm">
+                <Plus className="mr-2 h-4 w-4" /> Add Department
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md rounded-xl">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold">{editingDept ? "Edit Department" : "Add Department"}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSave} className="space-y-4 pt-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Status</label>
-                  <Select value={deptStatus} onValueChange={(v: "active" | "inactive") => setDeptStatus(v)}>
+                  <label className="text-sm font-semibold text-gray-700">Department Name</label>
+                  <Input 
+                    value={deptName}
+                    onChange={(e) => setDeptName(e.target.value)}
+                    placeholder="e.g. Engineering"
+                    required
+                    className="rounded-lg border-gray-250 h-10"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Department Head</label>
+                  <Select value={headId} onValueChange={setHeadId}>
                     <SelectTrigger className="rounded-lg h-10 border-gray-250">
-                      <SelectValue placeholder="Select status" />
+                      <SelectValue placeholder="Select a head (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
+                      {employees.map(emp => (
+                        <SelectItem key={emp.id} value={emp.id}>{emp.full_name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
 
-              <div className="flex justify-end space-x-2 pt-4 border-t border-gray-100">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg">Cancel</Button>
-                <Button type="submit" className="bg-gray-900 hover:bg-gray-800 text-white rounded-lg">Save</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Parent Department</label>
+                  <Select value={parentId} onValueChange={setParentId}>
+                    <SelectTrigger className="rounded-lg h-10 border-gray-250">
+                      <SelectValue placeholder="Select parent department (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {departments
+                        .filter(d => !editingDept || d.id !== editingDept.id)
+                        .map(dept => (
+                          <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {editingDept && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700">Status</label>
+                    <Select value={deptStatus} onValueChange={(v: "active" | "inactive") => setDeptStatus(v)}>
+                      <SelectTrigger className="rounded-lg h-10 border-gray-250">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="flex justify-end space-x-2 pt-4 border-t border-gray-100">
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-lg">Cancel</Button>
+                  <Button type="submit" className="bg-gray-900 hover:bg-gray-800 text-white rounded-lg">Save</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {/* Main Table Card */}
@@ -247,7 +251,7 @@ export default function DepartmentsPage() {
                 <TableHead className="font-semibold text-gray-600 h-12 px-6">Head</TableHead>
                 <TableHead className="font-semibold text-gray-600 h-12 px-6">Parent Dept</TableHead>
                 <TableHead className="font-semibold text-gray-600 h-12 px-6">Status</TableHead>
-                <TableHead className="font-semibold text-gray-600 h-12 px-6 text-right">Actions</TableHead>
+                {user?.role === 'admin' && <TableHead className="font-semibold text-gray-600 h-12 px-6 text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -290,11 +294,13 @@ export default function DepartmentsPage() {
                         {dept.status === "active" ? "Active" : "Inactive"}
                       </span>
                     </TableCell>
-                    <TableCell className="px-6 py-4 text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(dept)} className="h-8 w-8 text-gray-400 hover:text-gray-600 rounded-lg">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+                    {user?.role === 'admin' && (
+                      <TableCell className="px-6 py-4 text-right">
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(dept)} className="h-8 w-8 text-gray-400 hover:text-gray-600 rounded-lg">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}

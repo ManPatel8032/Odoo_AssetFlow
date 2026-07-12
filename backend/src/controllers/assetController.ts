@@ -5,10 +5,11 @@ import db from '../config/db';
 // Fetches all assets with optional filtering by status, category, department, and search term.
 export const getAssets = async (req: Request, res: Response) => {
   try {
-    const { status, category_id, department_id, search } = req.query;
+    const { status, category_id, department_id: queryDeptId, search } = req.query;
+    const { role, id: userId, department_id: userDeptId } = req.user!;
 
     let query = `
-      SELECT a.*, c.name AS category_name, dept.name AS department_name,
+      SELECT DISTINCT a.*, c.name AS category_name, dept.name AS department_name,
              CASE 
                WHEN a.status = 'allocated' THEN (
                  SELECT d.name 
@@ -27,8 +28,20 @@ export const getAssets = async (req: Request, res: Response) => {
       LEFT JOIN departments dept ON a.department_id = dept.id
     `;
     const conditions: string[] = [];
-    const params: (string | undefined)[] = [];
+    const params: any[] = [];
     let paramIndex = 1;
+
+    // RBAC Joins & Conditions
+    if (role === 'employee') {
+      query += ` LEFT JOIN allocations al ON a.id = al.asset_id AND al.returned_at IS NULL`;
+      conditions.push(`(al.employee_id = $${paramIndex++} OR a.status = 'available')`);
+      params.push(userId);
+    } else if (role === 'department_head') {
+      query += ` LEFT JOIN allocations al ON a.id = al.asset_id AND al.returned_at IS NULL`;
+      query += ` LEFT JOIN profiles p ON al.employee_id = p.id`;
+      conditions.push(`(p.department_id = $${paramIndex++} OR a.status = 'available')`);
+      params.push(userDeptId);
+    }
 
     if (status && typeof status === 'string') {
       conditions.push(`a.status = $${paramIndex++}`);
@@ -40,7 +53,7 @@ export const getAssets = async (req: Request, res: Response) => {
       params.push(category_id);
     }
 
-    if (department_id && typeof department_id === 'string') {
+    if (queryDeptId && typeof queryDeptId === 'string') {
       conditions.push(`(
         a.department_id = $${paramIndex} OR (
           SELECT p.department_id 
@@ -51,7 +64,7 @@ export const getAssets = async (req: Request, res: Response) => {
           LIMIT 1
         ) = $${paramIndex}
       )`);
-      params.push(department_id);
+      params.push(queryDeptId);
       paramIndex++;
     }
 

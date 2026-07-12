@@ -5,7 +5,8 @@ import db from '../config/db';
 // Admin only: List all employee profiles
 export const getProfiles = async (req: Request, res: Response) => {
   try {
-    const { role, department_id, status, search } = req.query;
+    const { role: searchRole, department_id: searchDeptId, status, search } = req.query;
+    const { role: userRole, id: userId, department_id: userDeptId } = req.user!;
 
     let query = `
       SELECT p.id, p.full_name, p.email, p.role, p.status,
@@ -16,12 +17,23 @@ export const getProfiles = async (req: Request, res: Response) => {
     `;
     const params: any[] = [];
 
-    if (role) {
-      params.push(role);
+    // RBAC Filter
+    if (userRole === 'employee' || userRole === 'department_head') {
+      if (userDeptId) {
+        params.push(userDeptId);
+        query += ` AND p.department_id = $${params.length}`;
+      } else {
+        params.push(userId);
+        query += ` AND p.id = $${params.length}`;
+      }
+    }
+
+    if (searchRole) {
+      params.push(searchRole);
       query += ` AND p.role = $${params.length}`;
     }
-    if (department_id) {
-      params.push(department_id);
+    if (searchDeptId) {
+      params.push(searchDeptId);
       query += ` AND p.department_id = $${params.length}`;
     }
     if (status) {
@@ -164,9 +176,20 @@ export const promoteUser = async (req: Request, res: Response) => {
 export const deactivateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { role: userRole, department_id: userDeptId } = req.user!;
 
     if (id === req.user?.id) {
       return res.status(400).json({ error: 'You cannot deactivate your own account' });
+    }
+
+    if (userRole === 'department_head') {
+      const empRes = await db.query('SELECT department_id FROM profiles WHERE id = $1', [id]);
+      if (empRes.rows.length === 0) {
+        return res.status(404).json({ error: 'Profile not found' });
+      }
+      if (empRes.rows[0].department_id !== userDeptId) {
+        return res.status(403).json({ error: 'You can only deactivate employees in your own department' });
+      }
     }
 
     const { rows } = await db.query(
