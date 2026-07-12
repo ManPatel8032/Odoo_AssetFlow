@@ -14,29 +14,27 @@ import {
   BarChart3,
   Settings,
   ChevronRight,
+  Lock,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/assets", label: "Assets", icon: Package },
-  { href: "/allocations", label: "Allocations", icon: Users },
-  { href: "/bookings", label: "Bookings", icon: BookOpen },
-  { href: "/maintenance", label: "Maintenance", icon: Wrench },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin"] },
+  { href: "/assets", label: "Assets", icon: Package, roles: ["asset_manager", "department_head", "employee"] },
+  { href: "/allocations", label: "Allocations", icon: Users, roles: ["asset_manager", "department_head", "employee"] },
+  { href: "/bookings", label: "Bookings", icon: BookOpen, roles: ["department_head", "employee"] },
+  { href: "/maintenance", label: "Maintenance", icon: Wrench, roles: ["asset_manager", "employee"] },
   { href: "/audits", label: "Audits", icon: ClipboardCheck, roles: ["admin", "asset_manager"] },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/org-setup/departments", label: "Org Setup", icon: Settings, roles: ["admin", "department_head"] },
+  { href: "/reports", label: "Reports", icon: BarChart3, roles: ["admin"] },
+  { href: "/org-setup/departments", label: "Org Setup", icon: Settings, roles: ["admin"] },
 ];
 
 export default function Sidebar() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const role = user?.role || null;
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-
-  const filtered = navItems.filter(item => {
-    if (!item.roles) return true;
-    return item.roles.includes(role ?? "");
-  });
 
   const initials = user?.full_name
     ? user.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -71,27 +69,48 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className={`flex-1 py-4 space-y-0.5 overflow-y-auto overflow-x-hidden ${collapsed ? "px-2" : "px-3"}`}>
-        {filtered.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, icon: Icon, roles }) => {
+          const hasAccess = !roles || roles.includes(role ?? "");
           const active = pathname === href || pathname.startsWith(href + "/");
+          
+          const handleClick = (e: React.MouseEvent) => {
+            if (!hasAccess) {
+              e.preventDefault();
+              toast({
+                title: "Access Denied",
+                description: "You are not eligible to view this page.",
+                variant: "destructive"
+              });
+            }
+          };
+
           return (
             <Link
               key={href}
-              href={href}
+              href={hasAccess ? href : "#"}
+              onClick={handleClick}
               title={collapsed ? label : undefined}
               className={`flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-150 group ${
                 collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2.5"
               } ${
                 active
                   ? "bg-gray-700 text-white"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                  : hasAccess
+                  ? "text-gray-400 hover:bg-gray-800 hover:text-white"
+                  : "text-gray-600 hover:bg-gray-900/40 cursor-not-allowed"
               }`}
             >
               <Icon
                 className={`w-5 h-5 flex-shrink-0 transition-colors ${
-                  active ? "text-gray-200" : "text-gray-500 group-hover:text-gray-300"
+                  active ? "text-gray-200" : hasAccess ? "text-gray-500 group-hover:text-gray-300" : "text-gray-700"
                 }`}
               />
-              {!collapsed && <span className="truncate">{label}</span>}
+              {!collapsed && (
+                <div className="flex items-center justify-between w-full min-w-0">
+                  <span className="truncate">{label}</span>
+                  {!hasAccess && <Lock className="w-3.5 h-3.5 text-gray-700 ml-1.5 flex-shrink-0" />}
+                </div>
+              )}
             </Link>
           );
         })}

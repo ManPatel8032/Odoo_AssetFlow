@@ -26,6 +26,7 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
   const [startTime, setStartTime] = useState("09:00");
   const [endDate, setEndDate] = useState("");
   const [endTime, setEndTime] = useState("10:00");
+  const [status, setStatus] = useState("requested");
 
   useEffect(() => {
     if (open) {
@@ -36,6 +37,7 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
       setStartTime("09:00");
       setEndDate("");
       setEndTime("10:00");
+      setStatus("requested");
       setError("");
       fetchAssets();
       fetchEmployees();
@@ -47,7 +49,8 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
       const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
       if (response.ok) {
         const data = await response.json();
-        setAssets(data.filter((a: any) => a.status === 'available'));
+        // Allow booking of any asset (especially rooms/spaces)
+        setAssets(data);
       }
     } catch (err) {
       console.error("Failed to fetch assets", err);
@@ -90,12 +93,12 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
       const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ asset_id: assetId, employee_id: employeeId, start_time, end_time })
+        body: JSON.stringify({ asset_id: assetId, employee_id: employeeId, start_time, end_time, status })
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to create booking. Asset might be double-booked.");
+        throw new Error(data.error || "Failed to create booking.");
       }
 
       onSuccess();
@@ -127,11 +130,11 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
             <Label>Resource / Asset</Label>
             <Select value={assetId} onValueChange={setAssetId} required>
               <SelectTrigger>
-                <SelectValue placeholder="Select an available asset..." />
+                <SelectValue placeholder="Select an asset..." />
               </SelectTrigger>
               <SelectContent>
                 {assets.length === 0 ? (
-                  <SelectItem value="none" disabled>No available assets found</SelectItem>
+                  <SelectItem value="none" disabled>No assets found</SelectItem>
                 ) : (
                   assets.map(a => (
                     <SelectItem key={a.id} value={a.id}>
@@ -155,7 +158,7 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
                 ) : (
                   employees.map(emp => (
                     <SelectItem key={emp.id} value={emp.id}>
-                      {emp.name}
+                      {emp.full_name || emp.name}
                     </SelectItem>
                   ))
                 )}
@@ -203,6 +206,19 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
                 required
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Booking Mode</Label>
+            <Select value={status} onValueChange={setStatus} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select status..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="requested">Requested (Pending Approval)</SelectItem>
+                <SelectItem value="confirmed">Confirmed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <DialogFooter className="mt-6">

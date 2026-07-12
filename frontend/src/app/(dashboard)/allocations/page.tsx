@@ -48,6 +48,7 @@ type ActiveAllocation = {
 };
 
 export default function AllocationsPage() {
+  const { user } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [activeAllocations, setActiveAllocations] = useState<ActiveAllocation[]>([]);
@@ -64,8 +65,7 @@ export default function AllocationsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { toast } = useToast();
-  const { user } = useAuth();
-  const canAllocate = user?.role === "admin" || user?.role === "asset_manager";
+  const canAllocate = user?.role === "asset_manager";
   
   useEffect(() => {
     fetchAllAssets();
@@ -302,26 +302,21 @@ export default function AllocationsPage() {
                     <Button 
                       type="submit" 
                       disabled={isSubmitting || !toEmployeeId}
-                      className="bg-green-700 hover:bg-green-800 text-white rounded-xl h-11 px-8"
+                      className="bg-gray-900 hover:bg-gray-800 text-white rounded-xl h-11 px-8"
                     >
-                      {isSubmitting ? "Submitting..." : (canAllocate ? "Transfer Asset" : "Submit Request")}
+                      {isSubmitting ? "Requesting..." : "Request Transfer"}
                     </Button>
                   </form>
                 </div>
               ) : selectedAssetInfo.status === 'available' ? (
                 // AVAILABLE STATE - Show Allocation Form
                 <div className="space-y-6">
-                  <div className="bg-green-50 border border-green-200 text-green-800 rounded-xl p-4 text-sm">
-                    <p className="font-semibold">Asset is Available</p>
-                    <p className="mt-1 opacity-90">You can directly allocate this asset below.</p>
-                  </div>
-
                   <form onSubmit={handleAllocate} className="space-y-5">
                     <div>
-                      <h3 className="font-semibold text-gray-900 mb-4">Allocation Request</h3>
+                      <h3 className="font-semibold text-gray-900 mb-4">Allocate Asset</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-xs font-medium text-gray-500 uppercase">To Employee</label>
+                          <label className="text-xs font-medium text-gray-500 uppercase">Allocate To</label>
                           <Select value={toEmployeeId} onValueChange={setToEmployeeId}>
                             <SelectTrigger className="h-11 border-gray-250">
                               <SelectValue placeholder="Select Employee...." />
@@ -443,7 +438,7 @@ export default function AllocationsPage() {
                       <TableCell className="text-gray-600">{new Date(allocation.allocated_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-sm text-gray-500 max-w-[200px] truncate">{allocation.notes || "-"}</TableCell>
                       <TableCell className="text-right px-6 py-4">
-                        {canAllocate && (
+                        {(canAllocate || allocation.employee_id === user?.id) && (
                           <Button 
                             variant="outline" 
                             size="sm" 

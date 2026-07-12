@@ -13,7 +13,7 @@ import { getAllocations, createAllocation, returnAsset, getAssetAllocationHistor
 import { getTransfers, requestTransfer, approveTransfer, rejectTransfer } from '../controllers/transferController';
 
 // Bookings
-import { getBookings, createBooking, cancelBooking } from '../controllers/bookingController';
+import { getBookings, createBooking, cancelBooking, updateBookingStatus } from '../controllers/bookingController';
 
 // Maintenance
 import { getMaintenance, createMaintenance, updateMaintenanceStatus } from '../controllers/maintenanceController';
@@ -74,12 +74,13 @@ router.get('/allocations/asset/:id/history', authMiddleware, getAssetAllocationH
 // ─── Transfers (any authenticated user can request/view) ────────────────────
 router.get('/transfers', authMiddleware, getTransfers);
 router.post('/transfers', authMiddleware, requestTransfer);
-router.put('/transfers/:id/approve', authMiddleware, requireRole('admin', 'asset_manager', 'department_head'), approveTransfer);
-router.put('/transfers/:id/reject', authMiddleware, requireRole('admin', 'asset_manager', 'department_head'), rejectTransfer);
+router.put('/transfers/:id/approve', authMiddleware, requireRole('asset_manager', 'department_head'), approveTransfer);
+router.put('/transfers/:id/reject', authMiddleware, requireRole('asset_manager', 'department_head'), rejectTransfer);
 
 // ─── Bookings (any authenticated user) ──────────────────────────────────────
 router.get('/bookings', authMiddleware, getBookings);
 router.post('/bookings', authMiddleware, createBooking);
+router.put('/bookings/:id/status', authMiddleware, requireRole('asset_manager', 'department_head'), updateBookingStatus);
 router.delete('/bookings/:id', authMiddleware, cancelBooking);
 
 // ─── Maintenance (any user can request, managers approve) ───────────────────

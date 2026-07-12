@@ -4,13 +4,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   admin: [
     "org_setup",
     "promote_employee",
-    "assets_create",
-    "assets_edit",
-    "assets_delete",
     "audit_manage",
     "audit_view",
-    "bookings_manage",
-    "maintenance_manage",
   ],
   asset_manager: [
     "assets_create",

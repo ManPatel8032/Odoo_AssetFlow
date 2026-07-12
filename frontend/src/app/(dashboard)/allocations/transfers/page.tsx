@@ -26,12 +26,12 @@ type Transfer = {
 };
 
 export default function TransfersPage() {
+  const { user } = useAuth();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const { user } = useAuth();
   
-  const canApprove = user?.role === 'admin' || user?.role === 'asset_manager' || user?.role === 'department_head';
+  const canApprove = user?.role === 'asset_manager' || user?.role === 'department_head';
 
   // For requesting new transfer
   const [isDialogOpen, setIsDialogOpen] = useState(false);

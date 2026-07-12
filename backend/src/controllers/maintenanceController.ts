@@ -22,10 +22,9 @@ export const createMaintenance = async (req: Request, res: Response) => {
   try {
     const { asset_id, description, scheduled_date } = req.body;
     
-    // In actual SQL, asset_id is required
     const query = `
       INSERT INTO maintenance (asset_id, description, scheduled_date, status) 
-      VALUES ($1, $2, $3, 'scheduled') 
+      VALUES ($1, $2, $3, 'pending') 
       RETURNING *
     `;
     
@@ -66,24 +65,35 @@ export const createMaintenance = async (req: Request, res: Response) => {
 export const updateMaintenanceStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, technician, resolution_notes } = req.body;
     
-    const validStatuses = ['scheduled', 'in_progress', 'completed', 'cancelled'];
+    const validStatuses = ['pending', 'approved', 'technician_assigned', 'in_progress', 'resolved', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
 
-    let query = `UPDATE maintenance SET status = $1`;
-    const params: any[] = [status, id];
+    const updates: string[] = ['status = $1'];
+    const params: any[] = [status];
+    let paramIndex = 2;
 
-    if (status === 'completed') {
-      query += `, completed_date = CURRENT_TIMESTAMP`;
+    if (status === 'resolved') {
+      updates.push(`completed_date = CURRENT_TIMESTAMP`);
     } else {
-      query += `, completed_date = NULL`;
+      updates.push(`completed_date = NULL`);
     }
 
-    query += ` WHERE id = $2 RETURNING *`;
+    if (technician !== undefined) {
+      updates.push(`technician = $${paramIndex++}`);
+      params.push(technician);
+    }
 
+    if (resolution_notes !== undefined) {
+      updates.push(`resolution_notes = $${paramIndex++}`);
+      params.push(resolution_notes);
+    }
+
+    params.push(id);
+    const query = `UPDATE maintenance SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
     const { rows } = await db.query(query, params);
     
     if (rows.length === 0) {
@@ -93,9 +103,10 @@ export const updateMaintenanceStatus = async (req: Request, res: Response) => {
     const ticket = rows[0];
 
     // Update asset status based on maintenance workflow
-    if (status === 'in_progress') {
+    // "Approving a card moves the asset to under maintenance, resolving return it to available"
+    if (status === 'approved' || status === 'technician_assigned' || status === 'in_progress') {
       await db.query(`UPDATE assets SET status = 'maintenance' WHERE id = $1`, [ticket.asset_id]);
-    } else if (status === 'completed') {
+    } else if (status === 'resolved') {
       await db.query(`UPDATE assets SET status = 'available' WHERE id = $1`, [ticket.asset_id]);
     }
 

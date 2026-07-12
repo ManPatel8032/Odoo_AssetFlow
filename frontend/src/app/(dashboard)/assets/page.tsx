@@ -35,6 +35,7 @@ type Department = {
 };
 
 export default function AssetsPage() {
+  const { user } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -47,7 +48,6 @@ export default function AssetsPage() {
   const [selectedDept, setSelectedDept] = useState("all");
 
   const { toast } = useToast();
-  const { user } = useAuth();
   
   const canCreate = user?.role ? hasPermission(user.role, "assets_create") : false;
   const canEdit = user?.role ? hasPermission(user.role, "assets_edit") : false;
