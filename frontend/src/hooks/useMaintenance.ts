@@ -7,7 +7,7 @@ export function useMaintenance() {
   useEffect(() => {
     async function fetchMaintenance() {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/maintenance`);
+        const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/maintenance`);
         if (response.ok) {
           const data = await response.json();
           setMaintenance(data);
@@ -23,3 +23,5 @@ export function useMaintenance() {
 
   return { maintenance, loading };
 }
+
+import { fetchWithAuth } from "@/lib/api";

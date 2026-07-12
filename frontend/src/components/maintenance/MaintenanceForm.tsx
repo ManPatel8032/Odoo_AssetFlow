@@ -36,7 +36,7 @@ export default function MaintenanceForm({ open, onOpenChange, onSuccess }: Maint
 
   const fetchAssets = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
       if (response.ok) {
         const data = await response.json();
         // Allow creating maintenance tickets for allocated or available assets
@@ -59,7 +59,7 @@ export default function MaintenanceForm({ open, onOpenChange, onSuccess }: Maint
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/maintenance`, {
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/maintenance`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -153,3 +153,5 @@ export default function MaintenanceForm({ open, onOpenChange, onSuccess }: Maint
     </Dialog>
   );
 }
+
+import { fetchWithAuth } from "@/lib/api";

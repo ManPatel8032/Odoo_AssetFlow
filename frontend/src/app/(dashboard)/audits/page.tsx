@@ -12,7 +12,7 @@ export default function AuditsPage() {
 
   const fetchAudits = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits`);
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits`);
       if (response.ok) {
         const data = await response.json();
         setAudits(data);
@@ -34,7 +34,7 @@ export default function AuditsPage() {
     
     try {
       // Mocking passing all asset IDs to audit
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits`, {
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -134,3 +134,5 @@ export default function AuditsPage() {
     </div>
   );
 }
+
+import { fetchWithAuth } from "@/lib/api";

@@ -7,7 +7,7 @@ export function useBookings() {
   useEffect(() => {
     async function fetchBookings() {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings`);
+        const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings`);
         if (response.ok) {
           const data = await response.json();
           setBookings(data);
@@ -23,3 +23,5 @@ export function useBookings() {
 
   return { bookings, loading };
 }
+
+import { fetchWithAuth } from "@/lib/api";

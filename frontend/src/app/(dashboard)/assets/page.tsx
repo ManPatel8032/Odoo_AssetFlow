@@ -28,7 +28,7 @@ export default function AssetsPage() {
 
   const fetchAssets = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
       setAssets(data);
@@ -128,3 +128,5 @@ export default function AssetsPage() {
     </div>
   );
 }
+
+import { fetchWithAuth } from "@/lib/api";

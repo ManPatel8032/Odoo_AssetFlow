@@ -44,7 +44,7 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
 
   const fetchAssets = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
       if (response.ok) {
         const data = await response.json();
         setAssets(data.filter((a: any) => a.status === 'available'));
@@ -56,7 +56,7 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/employees`);
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/employees`);
       if (response.ok) {
         const data = await response.json();
         setEmployees(data);
@@ -87,7 +87,7 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings`, {
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ asset_id: assetId, employee_id: employeeId, start_time, end_time })
@@ -218,3 +218,5 @@ export default function BookingForm({ open, onOpenChange, onSuccess }: BookingFo
     </Dialog>
   );
 }
+
+import { fetchWithAuth } from "@/lib/api";

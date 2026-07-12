@@ -6,7 +6,7 @@ export function useNotifications() {
   useEffect(() => {
     async function fetchNotifications() {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/notifications`);
+        const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/notifications`);
         if (response.ok) {
           const data = await response.json();
           setNotifications(data);
@@ -29,3 +29,5 @@ export function useNotifications() {
 
   return { notifications };
 }
+
+import { fetchWithAuth } from "@/lib/api";

@@ -7,7 +7,7 @@ export function useAudits() {
   useEffect(() => {
     async function fetchAudits() {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits`);
+        const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits`);
         if (response.ok) {
           const data = await response.json();
           setAudits(data);
@@ -23,3 +23,5 @@ export function useAudits() {
 
   return { audits, loading };
 }
+
+import { fetchWithAuth } from "@/lib/api";

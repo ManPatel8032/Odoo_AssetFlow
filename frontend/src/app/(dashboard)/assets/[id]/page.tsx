@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithAuth } from "@/lib/api";
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -41,7 +42,7 @@ export default function AssetDetailPage() {
 
   const fetchAsset = async (id: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets/${id}`);
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets/${id}`);
       if (!res.ok) {
         if (res.status === 404) {
           toast({ title: "Asset not found", variant: "destructive" });

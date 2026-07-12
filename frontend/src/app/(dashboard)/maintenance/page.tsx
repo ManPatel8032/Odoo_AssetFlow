@@ -14,7 +14,7 @@ export default function MaintenancePage() {
 
   const fetchTickets = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/maintenance`);
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/maintenance`);
       if (response.ok) {
         const data = await response.json();
         setTickets(data);
@@ -32,7 +32,7 @@ export default function MaintenancePage() {
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/maintenance/${id}/status`, {
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/maintenance/${id}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus })
@@ -112,3 +112,5 @@ export default function MaintenancePage() {
     </div>
   );
 }
+
+import { fetchWithAuth } from "@/lib/api";

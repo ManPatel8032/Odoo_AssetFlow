@@ -2,37 +2,52 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
   const { toast } = useToast();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (error) {
+      const data = await res.json();
+
+      if (res.ok) {
+        login(data.token, data.user);
+        router.push("/dashboard");
+      } else {
+        toast({
+          title: "Login Failed",
+          description: data.error || "An error occurred",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
       toast({
         title: "Login Failed",
-        description: error.message,
+        description: error.message || "Network error",
         variant: "destructive",
       });
-    } else {
-      router.push("/dashboard");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

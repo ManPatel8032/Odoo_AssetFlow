@@ -30,7 +30,7 @@ export default function CategoriesPage() {
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/categories`);
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/categories`);
       if (res.ok) {
         const data = await res.json();
         setCategories(data);
@@ -63,7 +63,7 @@ export default function CategoriesPage() {
       const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/categories${editingCategory ? `/${editingCategory.id}` : ''}`;
       const method = editingCategory ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await fetchWithAuth(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -85,7 +85,7 @@ export default function CategoriesPage() {
   const handleDelete = async (id: string) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/categories/${id}`, {
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/categories/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -184,3 +184,5 @@ export default function CategoriesPage() {
     </div>
   );
 }
+
+import { fetchWithAuth } from "@/lib/api";

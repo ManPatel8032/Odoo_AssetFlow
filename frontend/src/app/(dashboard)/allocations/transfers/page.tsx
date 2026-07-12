@@ -46,7 +46,7 @@ export default function TransfersPage() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/employees`);
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/employees`);
       if (res.ok) {
         const data = await res.json();
         setEmployees(data);
@@ -58,7 +58,7 @@ export default function TransfersPage() {
 
   const fetchTransfers = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/transfers`);
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/transfers`);
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
       setTransfers(data);
@@ -71,7 +71,7 @@ export default function TransfersPage() {
 
   const fetchAllocatedAssets = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
       if (res.ok) {
         const data = await res.json();
         // Only allocated assets can be transferred
@@ -84,7 +84,7 @@ export default function TransfersPage() {
 
   const handleAction = async (id: string, action: 'approve' | 'reject') => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/transfers/${id}/${action}`, {
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/transfers/${id}/${action}`, {
         method: "PUT",
       });
 
@@ -104,7 +104,7 @@ export default function TransfersPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/transfers`, {
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/transfers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ asset_id: assetId, to_employee_id: toEmployeeId }),
@@ -278,3 +278,5 @@ export default function TransfersPage() {
     </div>
   );
 }
+
+import { fetchWithAuth } from "@/lib/api";

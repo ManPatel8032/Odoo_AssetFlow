@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithAuth } from "@/lib/api";
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -35,7 +36,7 @@ export default function EditAssetPage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/categories`);
+        const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/categories`);
         if (res.ok) {
           const data = await res.json();
           setCategories(data);
@@ -53,7 +54,7 @@ export default function EditAssetPage() {
 
   const fetchAsset = async (id: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets/${id}`);
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets/${id}`);
       if (!res.ok) throw new Error("Failed to fetch asset");
       
       const data = await res.json();
@@ -82,7 +83,7 @@ export default function EditAssetPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets/${params.id}`, {
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets/${params.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

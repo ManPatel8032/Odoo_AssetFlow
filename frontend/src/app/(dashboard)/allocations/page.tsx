@@ -46,7 +46,7 @@ export default function AllocationsPage() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/employees`);
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/employees`);
       if (res.ok) {
         const data = await res.json();
         setEmployees(data);
@@ -58,7 +58,7 @@ export default function AllocationsPage() {
 
   const fetchAllocations = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/allocations`);
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/allocations`);
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
       setAllocations(data);
@@ -71,7 +71,7 @@ export default function AllocationsPage() {
 
   const fetchAvailableAssets = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
       if (res.ok) {
         const data = await res.json();
         setAvailableAssets(data.filter((a: any) => a.status === 'available'));
@@ -87,7 +87,7 @@ export default function AllocationsPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/allocations`, {
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/allocations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ asset_id: assetId, employee_id: employeeId, notes }),
@@ -114,7 +114,7 @@ export default function AllocationsPage() {
 
   const handleReturnAsset = async (id: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/allocations/${id}/return`, {
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/allocations/${id}/return`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes: "Returned via dashboard" }),
@@ -266,3 +266,5 @@ export default function AllocationsPage() {
     </div>
   );
 }
+
+import { fetchWithAuth } from "@/lib/api";

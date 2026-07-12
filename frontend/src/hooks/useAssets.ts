@@ -7,7 +7,7 @@ export function useAssets() {
   useEffect(() => {
     async function fetchAssets() {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
+        const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`);
         if (response.ok) {
           const data = await response.json();
           setAssets(data);
@@ -23,3 +23,5 @@ export function useAssets() {
 
   return { assets, loading };
 }
+
+import { fetchWithAuth } from "@/lib/api";

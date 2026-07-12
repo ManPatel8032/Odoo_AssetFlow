@@ -16,7 +16,7 @@ export default function BookingsPage() {
 
   const fetchBookings = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings`);
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings`);
       if (response.ok) {
         const data = await response.json();
         setBookings(data);
@@ -35,7 +35,7 @@ export default function BookingsPage() {
   const handleCancel = async (id: string) => {
     if (!confirm("Are you sure you want to cancel this booking?")) return;
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings/${id}`, {
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/bookings/${id}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -139,3 +139,5 @@ export default function BookingsPage() {
     </div>
   );
 }
+
+import { fetchWithAuth } from "@/lib/api";

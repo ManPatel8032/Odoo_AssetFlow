@@ -12,7 +12,7 @@ export default function ReportsPage() {
   const handleExportCSV = async () => {
     setIsExporting(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/reports/export`);
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/reports/export`);
       if (!response.ok) throw new Error("Network response was not ok");
       
       const blob = await response.blob();
@@ -111,3 +111,5 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+import { fetchWithAuth } from "@/lib/api";

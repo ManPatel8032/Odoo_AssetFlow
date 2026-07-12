@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,37 +11,45 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
   const { toast } = useToast();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/auth/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      },
-    });
+        body: JSON.stringify({ email, password, full_name: fullName }),
+      });
 
-    if (error) {
+      const data = await res.json();
+
+      if (res.ok) {
+        toast({
+          title: "Signup Successful!",
+          description: "Your account has been created. You can now log in.",
+        });
+        router.push("/login");
+      } else {
+        toast({
+          title: "Signup Failed",
+          description: data.error || "An error occurred",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
       toast({
         title: "Signup Failed",
-        description: error.message,
+        description: error.message || "Network error",
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Signup Successful!",
-        description: "Your account has been created. You can now log in.",
-      });
-      router.push("/login");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

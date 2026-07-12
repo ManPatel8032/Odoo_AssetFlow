@@ -16,7 +16,7 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/reports/utilization`);
+        const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/reports/utilization`);
         if (response.ok) {
           const result = await response.json();
           setData(result);
@@ -32,7 +32,7 @@ export default function AnalyticsPage() {
 
   const handleExportCSV = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/reports/export`);
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/reports/export`);
       if (!response.ok) throw new Error("Network response was not ok");
       
       // Trigger file download
@@ -167,3 +167,5 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
+import { fetchWithAuth } from "@/lib/api";

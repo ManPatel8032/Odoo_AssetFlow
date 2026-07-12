@@ -1,4 +1,5 @@
 "use client";
+import { fetchWithAuth } from "@/lib/api";
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -12,7 +13,7 @@ export default function AuditExecutionPage() {
 
   const fetchItems = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits/${id}/items`);
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits/${id}/items`);
       if (response.ok) {
         const data = await response.json();
         setItems(data);
@@ -30,7 +31,7 @@ export default function AuditExecutionPage() {
 
   const handleMarkStatus = async (itemId: string, status: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits/${id}/items/${itemId}`, {
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits/${id}/items/${itemId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })
@@ -49,7 +50,7 @@ export default function AuditExecutionPage() {
     
     setIsClosing(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits/${id}/close`, {
+      const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/audits/${id}/close`, {
         method: "POST"
       });
       if (response.ok) {
