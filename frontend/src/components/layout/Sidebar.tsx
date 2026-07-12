@@ -1,6 +1,29 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { hasPermission, UserRole } from "@/lib/permissions";
 
 export default function Sidebar() {
+  const [role, setRole] = useState<UserRole | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function fetchRole() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+        if (profile) setRole(profile.role);
+      }
+    }
+    fetchRole();
+  }, [supabase]);
+
   return (
     <aside className="w-64 bg-gray-900 text-white flex flex-col h-full">
       <div className="p-6 font-bold text-2xl border-b border-gray-800">
@@ -22,15 +45,19 @@ export default function Sidebar() {
         <Link href="/maintenance" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800">
           Maintenance
         </Link>
-        <Link href="/audits" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800">
-          Audits
-        </Link>
+        {(role === "admin" || role === "manager") && (
+          <Link href="/audits" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800">
+            Audits
+          </Link>
+        )}
         <Link href="/reports" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800">
           Reports
         </Link>
-        <Link href="/org-setup/departments" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800 text-gray-400 hover:text-white">
-          Org Setup
-        </Link>
+        {role === "admin" && (
+          <Link href="/org-setup/departments" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800 text-gray-400 hover:text-white">
+            Org Setup
+          </Link>
+        )}
       </nav>
     </aside>
   );
