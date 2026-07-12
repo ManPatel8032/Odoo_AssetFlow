@@ -74,7 +74,7 @@ export const promoteUser = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { role, department_id } = req.body;
 
-    const validRoles = ['employee', 'department_head', 'asset_manager', 'admin'];
+    const validRoles = ['employee', 'asset_manager', 'department_head', 'admin'];
     if (!role || !validRoles.includes(role)) {
       return res.status(400).json({
         error: `Invalid role. Must be one of: ${validRoles.join(', ')}`,
@@ -86,14 +86,52 @@ export const promoteUser = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'You cannot change your own role' });
     }
 
+    // Fetch current profile to validate promotion order
+    const profileRes = await db.query('SELECT role, department_id FROM profiles WHERE id = $1', [id]);
+    if (profileRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+    const currentRole = profileRes.rows[0].role;
+    
+    const roleOrder = ['employee', 'asset_manager', 'department_head', 'admin'];
+    const currentIdx = roleOrder.indexOf(currentRole);
+    const newIdx = roleOrder.indexOf(role);
+
+    // Ensure valid promotion (can't skip levels going up)
+    if (newIdx > currentIdx + 1) {
+      return res.status(400).json({ error: 'Cannot skip levels during promotion. Strict order required.' });
+    }
+
     const updateFields: string[] = ['role = $1'];
     const params: any[] = [role];
 
-    // If promoting to department_head, require department_id
+    // If promoting to department_head, require department_id and handle department logic
     if (role === 'department_head') {
       if (!department_id) {
         return res.status(400).json({ error: 'department_id is required when promoting to department_head' });
       }
+      
+      // Check if user is already head of ANOTHER department
+      const existingHeadRes = await db.query('SELECT id FROM departments WHERE head_id = $1', [id]);
+      if (existingHeadRes.rows.length > 0 && existingHeadRes.rows[0].id !== department_id) {
+         return res.status(400).json({ error: 'User is already head of another department' });
+      }
+
+      // Check current head of the target department
+      const currentHeadOfDept = await db.query('SELECT head_id FROM departments WHERE id = $1', [department_id]);
+      if (currentHeadOfDept.rows.length === 0) {
+        return res.status(404).json({ error: 'Target department not found' });
+      }
+
+      const oldHeadId = currentHeadOfDept.rows[0].head_id;
+      if (oldHeadId && oldHeadId !== id) {
+          // Demote old head
+          await db.query(`UPDATE profiles SET role = 'employee' WHERE id = $1 AND role = 'department_head'`, [oldHeadId]);
+      }
+
+      // Assign new head to the department
+      await db.query(`UPDATE departments SET head_id = $1 WHERE id = $2`, [id, department_id]);
+
       params.push(department_id);
       updateFields.push(`department_id = $${params.length}`);
     } else if (department_id) {
@@ -108,10 +146,6 @@ export const promoteUser = async (req: Request, res: Response) => {
       params
     );
 
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Profile not found' });
-    }
-
     // Log the promotion in activity_logs
     await db.query(
       `INSERT INTO activity_logs (id, profile_id, action, details)
@@ -119,10 +153,10 @@ export const promoteUser = async (req: Request, res: Response) => {
       [req.user?.id, 'role_change', JSON.stringify({ target_user: id, new_role: role })]
     );
 
-    res.json({ message: `User promoted to ${role}`, user: rows[0] });
+    res.json({ message: `User role updated to ${role}`, user: rows[0] });
   } catch (error: any) {
-    console.error('Error promoting user:', error);
-    res.status(500).json({ error: 'Failed to promote user' });
+    console.error('Error updating user role:', error);
+    res.status(500).json({ error: 'Failed to update user role' });
   }
 };
 

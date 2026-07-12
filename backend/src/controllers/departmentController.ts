@@ -37,6 +37,14 @@ export const createDepartment = async (req: Request, res: Response) => {
       return res.status(409).json({ error: 'A department with this name already exists' });
     }
 
+    if (head_id) {
+      // Check if user is already head of another department
+      const existingHeadRes = await db.query('SELECT id FROM departments WHERE head_id = $1', [head_id]);
+      if (existingHeadRes.rows.length > 0) {
+        return res.status(400).json({ error: 'User is already head of another department' });
+      }
+    }
+
     const { rows } = await db.query(
       `INSERT INTO departments (id, name, head_id, parent_id, status)
        VALUES (gen_random_uuid(), $1, $2, $3, 'active')
@@ -44,7 +52,19 @@ export const createDepartment = async (req: Request, res: Response) => {
       [name.trim(), head_id || null, parent_id || null]
     );
 
-    res.status(201).json(rows[0]);
+    const newDept = rows[0];
+
+    // If head_id is provided, automatically assign department_head role
+    if (head_id) {
+      await db.query(
+        `UPDATE profiles 
+         SET role = 'department_head', department_id = $1 
+         WHERE id = $2 AND role = 'employee'`,
+        [newDept.id, head_id]
+      );
+    }
+
+    res.status(201).json(newDept);
   } catch (error: any) {
     console.error('Error creating department:', error);
     res.status(500).json({ error: 'Failed to create department' });
@@ -57,6 +77,13 @@ export const updateDepartment = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, head_id, parent_id, status } = req.body;
 
+    // Fetch current department to check if head_id is changing
+    const currentDeptRes = await db.query('SELECT head_id FROM departments WHERE id = $1', [id]);
+    if (currentDeptRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Department not found' });
+    }
+    const currentHeadId = currentDeptRes.rows[0].head_id;
+
     const updates: string[] = [];
     const params: any[] = [];
 
@@ -65,6 +92,13 @@ export const updateDepartment = async (req: Request, res: Response) => {
       updates.push(`name = $${params.length}`);
     }
     if (head_id !== undefined) {
+      if (head_id && head_id !== currentHeadId) {
+        // Check if user is already head of another department
+        const existingHeadRes = await db.query('SELECT id FROM departments WHERE head_id = $1', [head_id]);
+        if (existingHeadRes.rows.length > 0 && existingHeadRes.rows[0].id !== id) {
+          return res.status(400).json({ error: 'User is already head of another department' });
+        }
+      }
       params.push(head_id || null);
       updates.push(`head_id = $${params.length}`);
     }
@@ -94,8 +128,26 @@ export const updateDepartment = async (req: Request, res: Response) => {
       params
     );
 
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Department not found' });
+    // If head_id has changed, update roles accordingly
+    if (head_id !== undefined && head_id !== currentHeadId) {
+      // Promote new head (if any)
+      if (head_id) {
+        await db.query(
+          `UPDATE profiles 
+           SET role = 'department_head', department_id = $1 
+           WHERE id = $2 AND role = 'employee'`,
+          [id, head_id]
+        );
+      }
+      // Demote old head back to employee (if they were a department_head)
+      if (currentHeadId) {
+        await db.query(
+          `UPDATE profiles 
+           SET role = 'employee' 
+           WHERE id = $1 AND role = 'department_head'`,
+          [currentHeadId]
+        );
+      }
     }
 
     res.json(rows[0]);
@@ -104,3 +156,4 @@ export const updateDepartment = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to update department' });
   }
 };
+
