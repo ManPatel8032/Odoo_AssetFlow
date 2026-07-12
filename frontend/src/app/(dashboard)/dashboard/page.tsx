@@ -1,43 +1,101 @@
 "use client";
 
-import { AlertCircle, ArrowUpRight, BarChart3, Package, Users, Wrench } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertCircle, BarChart3, Package, Users, Wrench, Activity, Clock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { fetchWithAuth } from "@/lib/api";
 
-const kpis = [
-  {
-    title: "Total Assets",
-    value: "1,248",
-    description: "+12 from last month",
-    icon: <Package className="h-4 w-4 text-muted-foreground" />,
-  },
-  {
-    title: "Allocated",
-    value: "842",
-    description: "67% of total inventory",
-    icon: <Users className="h-4 w-4 text-muted-foreground" />,
-  },
-  {
-    title: "In Maintenance",
-    value: "34",
-    description: "12 pending approvals",
-    icon: <Wrench className="h-4 w-4 text-muted-foreground" />,
-  },
-  {
-    title: "Utilization Rate",
-    value: "89%",
-    description: "+2% from last week",
-    icon: <BarChart3 className="h-4 w-4 text-muted-foreground" />,
-  },
-];
-
-const overdueReturns = [
-  { id: "1", asset: "MacBook Pro M2", tag: "LAP-0042", employee: "John Doe", expected_return: "2023-10-15", days_overdue: 3 },
-  { id: "2", asset: "Dell XPS 15", tag: "LAP-0019", employee: "Sarah Smith", expected_return: "2023-10-10", days_overdue: 8 },
-  { id: "3", asset: "Ford Transit Van", tag: "VEH-0004", employee: "Mike Johnson", expected_return: "2023-10-17", days_overdue: 1 },
-];
+interface DashboardData {
+  kpis: {
+    assets_available: number;
+    assets_allocated: number;
+    assets_maintenance: number;
+    assets_retired: number;
+    assets_total: number;
+    active_bookings: number;
+    pending_transfers: number;
+    overdue_returns: number;
+    upcoming_returns: number;
+    maintenance_today: number;
+  };
+  recent_activity: {
+    id: string;
+    action: string;
+    details: string;
+    created_at: string;
+    performed_by_name: string;
+  }[];
+}
 
 export default function DashboardPage() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/kpis`);
+        if (response.ok) {
+          const result = await response.json();
+          setData(result);
+        } else {
+          console.error("Failed to fetch dashboard data");
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex-1 space-y-4 p-8 pt-6 flex items-center justify-center">
+        <div className="text-muted-foreground animate-pulse">Loading dashboard data...</div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex-1 space-y-4 p-8 pt-6">
+        <div className="text-red-500">Failed to load dashboard data.</div>
+      </div>
+    );
+  }
+
+  const kpis = [
+    {
+      title: "Total Assets",
+      value: data.kpis.assets_total.toString(),
+      description: `${data.kpis.assets_available} available`,
+      icon: <Package className="h-4 w-4 text-muted-foreground" />,
+    },
+    {
+      title: "Allocated",
+      value: data.kpis.assets_allocated.toString(),
+      description: `${data.kpis.overdue_returns} overdue returns`,
+      icon: <Users className="h-4 w-4 text-muted-foreground" />,
+    },
+    {
+      title: "In Maintenance",
+      value: data.kpis.assets_maintenance.toString(),
+      description: `${data.kpis.maintenance_today} added today`,
+      icon: <Wrench className="h-4 w-4 text-muted-foreground" />,
+    },
+    {
+      title: "Utilization Rate",
+      value: data.kpis.assets_total > 0 
+        ? `${Math.round((data.kpis.assets_allocated / data.kpis.assets_total) * 100)}%` 
+        : "0%",
+      description: "Allocated vs Total",
+      icon: <BarChart3 className="h-4 w-4 text-muted-foreground" />,
+    },
+  ];
+
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
@@ -80,34 +138,39 @@ export default function DashboardPage() {
 
         <Card className="col-span-3">
           <CardHeader>
-            <CardTitle className="flex items-center text-red-600">
-              <AlertCircle className="mr-2 h-5 w-5" />
-              Overdue Returns
+            <CardTitle className="flex items-center">
+              <Activity className="mr-2 h-5 w-5" />
+              Recent Activity
             </CardTitle>
             <CardDescription>
-              Assets that have passed their expected return date.
+              Latest actions performed on assets.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {overdueReturns.map((item) => (
-                <div key={item.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">{item.asset}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {item.tag} &bull; {item.employee}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-bold text-red-600">
-                      {item.days_overdue} days
+            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+              {data.recent_activity.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center pt-4">No recent activity</div>
+              ) : (
+                data.recent_activity.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none capitalize">{item.action.replace(/_/g, ' ')}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-1">
+                        {item.details || "No details provided"}
+                      </p>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      overdue
+                    <div className="text-right flex-shrink-0 ml-4">
+                      <div className="text-sm font-medium">
+                        {item.performed_by_name || "System"}
+                      </div>
+                      <div className="text-xs text-muted-foreground flex items-center justify-end gap-1 mt-1">
+                        <Clock className="h-3 w-3" />
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
