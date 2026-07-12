@@ -1,0 +1,13 @@
+# Backend Environment Requirements
+
+The backend uses Supabase Edge Functions which are written in TypeScript and run on Deno. Dependencies are usually imported directly via URLs in the code (e.g., https://deno.land/...).
+
+## Prerequisites
+- Supabase CLI (Required to run local backend environment)
+  - Windows: `scoop install supabase` or via npm `npm i supabase --save-dev`
+- Deno (Optional, for running or testing edge functions locally outside Supabase container)
+  - Windows: `iwr https://deno.land/install.ps1 -useb | iex`
+- Docker (Required by Supabase CLI to run PostgreSQL and other services locally)
+
+To start the backend environment, run:
+`supabase start`

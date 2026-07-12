@@ -1,2 +1,10 @@
-# Python requirements for frontend (if applicable)
-# Note: The frontend is a Next.js (Node.js) project. Dependencies are managed in package.json.
+# Frontend Environment Requirements
+
+The frontend is a Next.js (Node.js) project. Dependencies are managed in package.json.
+
+## Prerequisites
+- Node.js >= 18.x
+- npm >= 9.x (or yarn / pnpm)
+
+To install dependencies, run:
+`npm install`
