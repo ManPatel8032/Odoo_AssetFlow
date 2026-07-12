@@ -34,15 +34,13 @@ export const getBookings = async (req: Request, res: Response) => {
 };
 
 export const createBooking = async (req: Request, res: Response) => {
-  const { asset_id, start_time, end_time } = req.body;
+  const { asset_id, start_time, end_time, employee_id: bodyEmployeeId } = req.body;
   
   const client = await db.connect();
   
   try {
-    // If the user isn't logged in with a real UUID profile, we might get foreign key errors.
-    // Let's dynamically get the first available employee from the DB as a fallback
-    let employee_id = req.user?.id;
-    if (!employee_id) {
+    let employee_id = bodyEmployeeId || req.user?.id;
+    if (!employee_id || employee_id.startsWith('mock-')) {
       const { rows: profiles } = await client.query('SELECT id FROM profiles LIMIT 1');
       if (profiles.length > 0) {
         employee_id = profiles[0].id;
