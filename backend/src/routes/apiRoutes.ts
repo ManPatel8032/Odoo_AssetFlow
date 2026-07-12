@@ -1,67 +1,127 @@
 import { Router } from 'express';
+
+// Auth
+import { signup, login, getMe } from '../controllers/authController';
+
+// Assets
 import { getAssets, getAssetById, createAsset, updateAsset, deleteAsset } from '../controllers/assetController';
-import { getBookings, createBooking, cancelBooking } from '../controllers/bookingController';
-import { getMaintenance, createMaintenance, updateMaintenanceStatus } from '../controllers/maintenanceController';
-import { getAudits, createAudit, getAuditItems, updateAuditItem, closeAudit } from '../controllers/auditController';
+
+// Allocations
 import { getAllocations, createAllocation, returnAsset } from '../controllers/allocationController';
+
+// Transfers
 import { getTransfers, requestTransfer, approveTransfer, rejectTransfer } from '../controllers/transferController';
-import { getNotifications } from '../controllers/notificationController';
-import { getCategories, createCategory, updateCategory, deleteCategory } from '../controllers/categoryController';
-import { getEmployees } from '../controllers/employeeController';
+
+// Bookings
+import { getBookings, createBooking, cancelBooking } from '../controllers/bookingController';
+
+// Maintenance
+import { getMaintenance, createMaintenance, updateMaintenanceStatus } from '../controllers/maintenanceController';
+
+// Audits
+import { getAudits, createAudit, getAuditItems, updateAuditItem, closeAudit } from '../controllers/auditController';
+
+// Reports
 import { getUtilizationStats, exportAssetData } from '../controllers/reportController';
+
+// Org Setup
+import { getProfiles, getProfileById, promoteUser, deactivateUser } from '../controllers/profileController';
+import { getDepartments, createDepartment, updateDepartment } from '../controllers/departmentController';
+import { getCategories, createCategory, updateCategory, deleteCategory } from '../controllers/categoryController';
+
+// Dashboard
+import { getDashboardKPIs } from '../controllers/dashboardController';
+
+// Notifications
+import { getNotifications } from '../controllers/notificationController';
+
+// Employees (from main branch)
+import { getEmployees } from '../controllers/employeeController';
+
+// Middleware
 import { authMiddleware } from '../middleware/auth';
+import { requireRole } from '../middleware/roleGuard';
 
 const router = Router();
 
-// ─── Employees ──────────────────────────────────────────────────────────────
-router.get('/employees', getEmployees);
+// ═══════════════════════════════════════════════════════════════════════════
+// PUBLIC ROUTES (no auth required)
+// ═══════════════════════════════════════════════════════════════════════════
+router.post('/auth/signup', signup);
+router.post('/auth/login', login);
 
-// ─── Categories ─────────────────────────────────────────────────────────────
-router.get('/categories', getCategories);
-router.post('/categories', authMiddleware, createCategory);
-router.put('/categories/:id', authMiddleware, updateCategory);
-router.delete('/categories/:id', authMiddleware, deleteCategory);
+// ═══════════════════════════════════════════════════════════════════════════
+// AUTHENTICATED ROUTES (any logged-in user)
+// ═══════════════════════════════════════════════════════════════════════════
+router.get('/auth/me', authMiddleware, getMe);
 
-// ─── Asset Routes ───────────────────────────────────────────────────────────
-router.get('/assets', getAssets);
-router.get('/assets/:id', getAssetById);
-router.post('/assets', createAsset);
-router.put('/assets/:id', updateAsset);
-router.delete('/assets/:id', deleteAsset);
+// ─── Dashboard ──────────────────────────────────────────────────────────────
+router.get('/dashboard/kpis', authMiddleware, getDashboardKPIs);
 
-// ─── Allocation Routes ─────────────────────────────────────────────────────
-router.get('/allocations', getAllocations);
-router.post('/allocations', createAllocation);
-router.put('/allocations/:id/return', returnAsset);
+// ─── Assets (read: any user | write: admin + asset_manager) ─────────────────
+router.get('/assets', authMiddleware, getAssets);
+router.get('/assets/:id', authMiddleware, getAssetById);
+router.post('/assets', authMiddleware, requireRole('admin', 'asset_manager'), createAsset);
+router.put('/assets/:id', authMiddleware, requireRole('admin', 'asset_manager'), updateAsset);
+router.delete('/assets/:id', authMiddleware, requireRole('admin', 'asset_manager'), deleteAsset);
 
-// ─── Transfer Routes ────────────────────────────────────────────────────────
-router.get('/transfers', getTransfers);
-router.post('/transfers', requestTransfer);
-router.put('/transfers/:id/approve', approveTransfer);
-router.put('/transfers/:id/reject', rejectTransfer);
+// ─── Allocations (read: any | write: admin + asset_manager) ─────────────────
+router.get('/allocations', authMiddleware, getAllocations);
+router.post('/allocations', authMiddleware, requireRole('admin', 'asset_manager'), createAllocation);
+router.put('/allocations/:id/return', authMiddleware, returnAsset);
 
-// ─── Booking Routes ────────────────────────────────────────────────────────
+// ─── Transfers (any authenticated user can request/view) ────────────────────
+router.get('/transfers', authMiddleware, getTransfers);
+router.post('/transfers', authMiddleware, requestTransfer);
+router.put('/transfers/:id/approve', authMiddleware, requireRole('admin', 'asset_manager', 'department_head'), approveTransfer);
+router.put('/transfers/:id/reject', authMiddleware, requireRole('admin', 'asset_manager', 'department_head'), rejectTransfer);
+
+// ─── Bookings (any authenticated user) ──────────────────────────────────────
 router.get('/bookings', authMiddleware, getBookings);
 router.post('/bookings', authMiddleware, createBooking);
 router.delete('/bookings/:id', authMiddleware, cancelBooking);
 
-// ─── Maintenance Routes ────────────────────────────────────────────────────
+// ─── Maintenance (any user can request, managers approve) ───────────────────
 router.get('/maintenance', authMiddleware, getMaintenance);
 router.post('/maintenance', authMiddleware, createMaintenance);
-router.put('/maintenance/:id/status', authMiddleware, updateMaintenanceStatus);
+router.put('/maintenance/:id/status', authMiddleware, requireRole('admin', 'asset_manager'), updateMaintenanceStatus);
 
-// ─── Audit Routes ──────────────────────────────────────────────────────────
-router.get('/audits', authMiddleware, getAudits);
-router.post('/audits', authMiddleware, createAudit);
-router.get('/audits/:id/items', authMiddleware, getAuditItems);
-router.put('/audits/:id/items/:itemId', authMiddleware, updateAuditItem);
-router.post('/audits/:id/close', authMiddleware, closeAudit);
+// ─── Audits (admin + asset_manager only) ────────────────────────────────────
+router.get('/audits', authMiddleware, requireRole('admin', 'asset_manager'), getAudits);
+router.post('/audits', authMiddleware, requireRole('admin', 'asset_manager'), createAudit);
+router.get('/audits/:id/items', authMiddleware, requireRole('admin', 'asset_manager'), getAuditItems);
+router.put('/audits/:id/items/:itemId', authMiddleware, requireRole('admin', 'asset_manager'), updateAuditItem);
+router.post('/audits/:id/close', authMiddleware, requireRole('admin', 'asset_manager'), closeAudit);
 
-// ─── Report Routes ─────────────────────────────────────────────────────────
-router.get('/reports/utilization', authMiddleware, getUtilizationStats);
-router.get('/reports/export', authMiddleware, exportAssetData);
+// ─── Reports (admin + asset_manager) ────────────────────────────────────────
+router.get('/reports/utilization', authMiddleware, requireRole('admin', 'asset_manager'), getUtilizationStats);
+router.get('/reports/export', authMiddleware, requireRole('admin', 'asset_manager'), exportAssetData);
 
-// ─── Notification Routes ───────────────────────────────────────────────────
-router.get('/notifications', getNotifications);
+// ─── Employees ──────────────────────────────────────────────────────────────
+router.get('/employees', authMiddleware, getEmployees);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ADMIN-ONLY ROUTES (Org Setup)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Profiles / Employee Directory ──────────────────────────────────────────
+router.get('/profiles', authMiddleware, requireRole('admin'), getProfiles);
+router.get('/profiles/:id', authMiddleware, requireRole('admin'), getProfileById);
+router.put('/profiles/:id/promote', authMiddleware, requireRole('admin'), promoteUser);
+router.put('/profiles/:id/deactivate', authMiddleware, requireRole('admin'), deactivateUser);
+
+// ─── Departments ────────────────────────────────────────────────────────────
+router.get('/departments', authMiddleware, getDepartments);
+router.post('/departments', authMiddleware, requireRole('admin'), createDepartment);
+router.put('/departments/:id', authMiddleware, requireRole('admin'), updateDepartment);
+
+// ─── Categories ─────────────────────────────────────────────────────────────
+router.get('/categories', authMiddleware, getCategories);
+router.post('/categories', authMiddleware, requireRole('admin'), createCategory);
+router.put('/categories/:id', authMiddleware, requireRole('admin'), updateCategory);
+router.delete('/categories/:id', authMiddleware, requireRole('admin'), deleteCategory);
+
+// ─── Notifications ──────────────────────────────────────────────────────────
+router.get('/notifications', authMiddleware, getNotifications);
 
 export default router;
