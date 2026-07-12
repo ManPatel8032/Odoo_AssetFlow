@@ -3,11 +3,40 @@
 import Link from "next/link";
 import { Bell, User, LogOut, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchWithAuth } from "@/lib/api";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/notifications/unread-count`);
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadCount(data.count || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    
+    // Listen to custom updates
+    window.addEventListener("notificationsUpdated", fetchUnreadCount);
+    
+    // Poll every 30 seconds for live updates
+    const interval = setInterval(fetchUnreadCount, 30000);
+    
+    return () => {
+      window.removeEventListener("notificationsUpdated", fetchUnreadCount);
+      clearInterval(interval);
+    };
+  }, []);
 
   const initials = user?.full_name
     ? user.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -38,10 +67,11 @@ export default function Navbar() {
           className="relative p-2 rounded-xl hover:bg-gray-50 text-gray-500 hover:text-gray-700 transition-colors"
         >
           <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-          </span>
+          {unreadCount > 0 && (
+            <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
+              {unreadCount}
+            </span>
+          )}
         </Link>
 
         {/* User Menu */}

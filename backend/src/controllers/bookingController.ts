@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import db from '../config/db';
+import { createNotification } from '../helpers/notifyHelper';
 
 
 export const getBookings = async (req: Request, res: Response) => {
@@ -67,8 +68,24 @@ export const createBooking = async (req: Request, res: Response) => {
       [asset_id, employee_id, start_time, end_time]
     );
     
+    const booking = rows[0];
+
+    // Fetch asset details for notification
+    const assetRes = await client.query('SELECT name, tag FROM assets WHERE id = $1', [asset_id]);
+    const asset = assetRes.rows[0];
+
     await client.query('COMMIT');
-    res.status(201).json(rows[0]);
+
+    // Notify employee of booking confirmation
+    if (asset) {
+      await createNotification(
+        employee_id,
+        'Booking Confirmed',
+        `Your booking for "${asset.name}" (${asset.tag}) from ${new Date(start_time).toLocaleString()} to ${new Date(end_time).toLocaleString()} has been confirmed.`
+      );
+    }
+
+    res.status(201).json(booking);
   } catch (e: any) {
     await client.query('ROLLBACK');
     console.error('Error creating booking:', e);
@@ -85,7 +102,24 @@ export const createBooking = async (req: Request, res: Response) => {
 export const cancelBooking = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    
+    const bookingRes = await db.query('SELECT asset_id, employee_id, start_time FROM bookings WHERE id = $1', [id]);
+    const booking = bookingRes.rows[0];
+
     await db.query(`UPDATE bookings SET status = 'cancelled' WHERE id = $1`, [id]);
+    
+    if (booking) {
+      const assetRes = await db.query('SELECT name, tag FROM assets WHERE id = $1', [booking.asset_id]);
+      const asset = assetRes.rows[0];
+      if (asset) {
+        await createNotification(
+          booking.employee_id,
+          'Booking Cancelled',
+          `Your booking for "${asset.name}" (${asset.tag}) starting on ${new Date(booking.start_time).toLocaleString()} has been cancelled.`
+        );
+      }
+    }
+
     res.json({ message: 'Booking cancelled' });
   } catch (error) {
     console.error('Error cancelling booking:', error);

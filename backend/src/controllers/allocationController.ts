@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import db from '../config/db';
+import { createNotification } from '../helpers/notifyHelper';
 
 // ─── GET /api/allocations ───────────────────────────────────────────────────
 // Fetches all active allocations (where returned_at IS NULL) with asset and employee details.
@@ -79,7 +80,7 @@ export const createAllocation = async (req: Request, res: Response) => {
 
     // 2. Verify employee exists
     const employeeResult = await client.query(
-      'SELECT id FROM profiles WHERE id = $1',
+      'SELECT id, full_name FROM profiles WHERE id = $1',
       [employee_id]
     );
 
@@ -104,6 +105,13 @@ export const createAllocation = async (req: Request, res: Response) => {
     );
 
     await client.query('COMMIT');
+
+    // Notify employee of new allocation
+    await createNotification(
+      employee_id,
+      'New Asset Allocated',
+      `Asset "${asset.name}" (${asset.tag}) has been allocated to you.`
+    );
 
     res.status(201).json({
       message: 'Asset allocated successfully',
@@ -167,7 +175,20 @@ export const returnAsset = async (req: Request, res: Response) => {
       [allocation.asset_id]
     );
 
+    // Get asset details for the notification
+    const assetResult = await client.query('SELECT name, tag FROM assets WHERE id = $1', [allocation.asset_id]);
+    const asset = assetResult.rows[0];
+
     await client.query('COMMIT');
+
+    // Notify employee of return
+    if (allocation.employee_id) {
+      await createNotification(
+        allocation.employee_id,
+        'Asset Returned Successfully',
+        `Asset "${asset?.name || 'Asset'}" (${asset?.tag || ''}) has been marked as returned.`
+      );
+    }
 
     res.json({ message: 'Asset returned successfully' });
   } catch (error) {

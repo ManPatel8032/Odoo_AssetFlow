@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import db from '../config/db';
+import { createNotification } from '../helpers/notifyHelper';
 
 export const getMaintenance = async (req: Request, res: Response) => {
   try {
@@ -33,9 +34,23 @@ export const createMaintenance = async (req: Request, res: Response) => {
     // Fetch the asset info to return a complete object to the frontend
     const ticket = rows[0];
     const assetRes = await db.query('SELECT name, tag FROM assets WHERE id = $1', [asset_id]);
-    if (assetRes.rows.length > 0) {
-      ticket.asset_name = assetRes.rows[0].name;
-      ticket.asset_tag = assetRes.rows[0].tag;
+    const asset = assetRes.rows[0];
+    if (asset) {
+      ticket.asset_name = asset.name;
+      ticket.asset_tag = asset.tag;
+    }
+    
+    // Notify current holder if any
+    const holderRes = await db.query(
+      'SELECT employee_id FROM allocations WHERE asset_id = $1 AND returned_at IS NULL LIMIT 1',
+      [asset_id]
+    );
+    if (holderRes.rows.length > 0 && asset) {
+      await createNotification(
+        holderRes.rows[0].employee_id,
+        'Asset Maintenance Scheduled',
+        `Maintenance has been scheduled for your allocated asset "${asset.name}" (${asset.tag}).`
+      );
     }
     
     res.status(201).json(ticket);
@@ -82,6 +97,23 @@ export const updateMaintenanceStatus = async (req: Request, res: Response) => {
       await db.query(`UPDATE assets SET status = 'maintenance' WHERE id = $1`, [ticket.asset_id]);
     } else if (status === 'completed') {
       await db.query(`UPDATE assets SET status = 'available' WHERE id = $1`, [ticket.asset_id]);
+    }
+
+    // Notify current holder of the status update
+    const holderRes = await db.query(
+      'SELECT employee_id FROM allocations WHERE asset_id = $1 AND returned_at IS NULL LIMIT 1',
+      [ticket.asset_id]
+    );
+    if (holderRes.rows.length > 0) {
+      const assetRes = await db.query('SELECT name, tag FROM assets WHERE id = $1', [ticket.asset_id]);
+      const asset = assetRes.rows[0];
+      if (asset) {
+        await createNotification(
+          holderRes.rows[0].employee_id,
+          'Maintenance Status Updated',
+          `The maintenance status for "${asset.name}" (${asset.tag}) is now: ${status.replace('_', ' ')}.`
+        );
+      }
     }
 
     res.json(ticket);

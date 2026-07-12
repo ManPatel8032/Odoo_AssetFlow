@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import db from '../config/db';
+import { createNotification } from '../helpers/notifyHelper';
 
 // ─── GET /api/transfers ─────────────────────────────────────────────────────
 // Fetches all transfer requests with asset and employee details.
@@ -55,7 +56,7 @@ export const requestTransfer = async (req: Request, res: Response) => {
 
     // 1. Verify asset is currently allocated
     const assetResult = await client.query(
-      'SELECT id, status FROM assets WHERE id = $1 FOR UPDATE',
+      'SELECT id, name, tag, status FROM assets WHERE id = $1 FOR UPDATE',
       [asset_id]
     );
 
@@ -65,7 +66,9 @@ export const requestTransfer = async (req: Request, res: Response) => {
       return;
     }
 
-    if (assetResult.rows[0].status !== 'allocated') {
+    const asset = assetResult.rows[0];
+
+    if (asset.status !== 'allocated') {
       await client.query('ROLLBACK');
       res.status(400).json({
         error: 'Asset is not currently allocated. Use allocation instead of transfer.',
@@ -122,6 +125,13 @@ export const requestTransfer = async (req: Request, res: Response) => {
     );
 
     await client.query('COMMIT');
+
+    // Notify the current holder that a transfer is requested
+    await createNotification(
+      from_employee_id,
+      'Asset Transfer Requested',
+      `A transfer has been requested for your allocated asset "${asset.name}" (${asset.tag}).`
+    );
 
     res.status(201).json({
       message: 'Transfer request created successfully',
@@ -187,7 +197,25 @@ export const approveTransfer = async (req: Request, res: Response) => {
       [id]
     );
 
+    // Get asset details for the notifications
+    const assetResult = await client.query('SELECT name, tag FROM assets WHERE id = $1', [transfer.asset_id]);
+    const asset = assetResult.rows[0];
+
     await client.query('COMMIT');
+
+    // Notify the from_employee that the asset has been transferred
+    await createNotification(
+      transfer.from_employee_id,
+      'Asset Transferred Away',
+      `Your asset "${asset?.name || 'Asset'}" (${asset?.tag || ''}) has been transferred to another employee.`
+    );
+
+    // Notify the to_employee that the transfer is approved
+    await createNotification(
+      transfer.to_employee_id,
+      'Asset Transfer Approved',
+      `Your transfer request for "${asset?.name || 'Asset'}" (${asset?.tag || ''}) has been approved.`
+    );
 
     res.json({ message: 'Transfer approved successfully' });
   } catch (error) {
@@ -206,7 +234,7 @@ export const rejectTransfer = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const transferResult = await db.query(
-      'SELECT id, status FROM transfers WHERE id = $1',
+      'SELECT id, status, asset_id, to_employee_id FROM transfers WHERE id = $1',
       [id]
     );
 
@@ -215,14 +243,27 @@ export const rejectTransfer = async (req: Request, res: Response) => {
       return;
     }
 
-    if (transferResult.rows[0].status !== 'pending') {
-      res.status(400).json({ error: `Transfer is already ${transferResult.rows[0].status}` });
+    const transfer = transferResult.rows[0];
+
+    if (transfer.status !== 'pending') {
+      res.status(400).json({ error: `Transfer is already ${transfer.status}` });
       return;
     }
 
     await db.query(
       `UPDATE transfers SET status = 'rejected' WHERE id = $1`,
       [id]
+    );
+
+    // Get asset details
+    const assetResult = await db.query('SELECT name, tag FROM assets WHERE id = $1', [transfer.asset_id]);
+    const asset = assetResult.rows[0];
+
+    // Notify the to_employee that the transfer is rejected
+    await createNotification(
+      transfer.to_employee_id,
+      'Asset Transfer Rejected',
+      `Your transfer request for "${asset?.name || 'Asset'}" (${asset?.tag || ''}) was rejected.`
     );
 
     res.json({ message: 'Transfer rejected' });

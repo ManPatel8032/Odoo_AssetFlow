@@ -33,7 +33,7 @@ import { getCategories, createCategory, updateCategory, deleteCategory } from '.
 import { getDashboardKPIs } from '../controllers/dashboardController';
 
 // Notifications
-import { getNotifications } from '../controllers/notificationController';
+import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '../controllers/notificationController';
 
 // Employees (from main branch)
 import { getEmployees } from '../controllers/employeeController';
@@ -123,5 +123,8 @@ router.delete('/categories/:id', authMiddleware, requireRole('admin'), deleteCat
 
 // ─── Notifications ──────────────────────────────────────────────────────────
 router.get('/notifications', authMiddleware, getNotifications);
+router.get('/notifications/unread-count', authMiddleware, getUnreadCount);
+router.put('/notifications/read-all', authMiddleware, markAllAsRead);
+router.put('/notifications/:id/read', authMiddleware, markAsRead);
 
 export default router;
