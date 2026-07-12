@@ -3,13 +3,20 @@ import { getAssets, getAssetById, createAsset, updateAsset, deleteAsset } from '
 import { getBookings, createBooking, cancelBooking } from '../controllers/bookingController';
 import { getMaintenance, createMaintenance, updateMaintenanceStatus } from '../controllers/maintenanceController';
 import { getAudits, createAudit, getAuditItems, updateAuditItem, closeAudit } from '../controllers/auditController';
-import { getUtilizationStats, exportAssetData } from '../controllers/reportController';
 import { getAllocations, createAllocation, returnAsset } from '../controllers/allocationController';
 import { getTransfers, requestTransfer, approveTransfer, rejectTransfer } from '../controllers/transferController';
 import { getNotifications } from '../controllers/notificationController';
+import { getCategories, createCategory, updateCategory, deleteCategory } from '../controllers/categoryController';
+import { getUtilizationStats, exportAssetData } from '../controllers/reportController';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
+
+// ─── Categories ─────────────────────────────────────────────────────────────
+router.get('/categories', getCategories);
+router.post('/categories', authMiddleware, createCategory);
+router.put('/categories/:id', authMiddleware, updateCategory);
+router.delete('/categories/:id', authMiddleware, deleteCategory);
 
 // ─── Asset Routes ───────────────────────────────────────────────────────────
 router.get('/assets', getAssets);

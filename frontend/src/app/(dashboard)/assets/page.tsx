@@ -112,9 +112,11 @@ export default function AssetsPage() {
                           <Eye className="h-4 w-4 text-gray-500" />
                         </Button>
                       </Link>
-                      <Button variant="ghost" size="icon">
-                        <Edit className="h-4 w-4 text-blue-500" />
-                      </Button>
+                      <Link href={`/assets/${asset.id}/edit`}>
+                        <Button variant="ghost" size="icon">
+                          <Edit className="h-4 w-4 text-blue-500" />
+                        </Button>
+                      </Link>
                     </TableCell>
                   </TableRow>
                 ))

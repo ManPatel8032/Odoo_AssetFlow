@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,14 @@ type Category = {
   name: string;
 };
 
-export default function NewAssetPage() {
+export default function EditAssetPage() {
   const router = useRouter();
+  const params = useParams();
   const { toast } = useToast();
   
   const [categories, setCategories] = useState<Category[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Form State
   const [name, setName] = useState("");
@@ -28,6 +30,7 @@ export default function NewAssetPage() {
   const [serialNumber, setSerialNumber] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
   const [cost, setCost] = useState("");
+  const [status, setStatus] = useState("available");
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -42,7 +45,33 @@ export default function NewAssetPage() {
       }
     };
     fetchCategories();
-  }, []);
+
+    if (params.id) {
+      fetchAsset(params.id as string);
+    }
+  }, [params.id]);
+
+  const fetchAsset = async (id: string) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets/${id}`);
+      if (!res.ok) throw new Error("Failed to fetch asset");
+      
+      const data = await res.json();
+      setName(data.name || "");
+      setCategoryId(data.category_id || "none");
+      setSerialNumber(data.serial_number || "");
+      if (data.purchase_date) {
+        setPurchaseDate(new Date(data.purchase_date).toISOString().split('T')[0]);
+      }
+      setCost(data.cost ? String(data.cost) : "");
+      setStatus(data.status || "available");
+    } catch (error) {
+      toast({ title: "Error fetching asset details", variant: "destructive" });
+      router.push("/assets");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,8 +82,8 @@ export default function NewAssetPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets`, {
-        method: "POST",
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/assets/${params.id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
@@ -62,22 +91,27 @@ export default function NewAssetPage() {
           serial_number: serialNumber,
           purchase_date: purchaseDate || null,
           cost: cost ? parseFloat(cost) : null,
+          status
         }),
       });
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Failed to create asset");
+        throw new Error(err.error || "Failed to update asset");
       }
 
-      toast({ title: "Asset created successfully" });
+      toast({ title: "Asset updated successfully" });
       router.push("/assets");
     } catch (error: any) {
-      toast({ title: error.message || "Failed to create asset", variant: "destructive" });
+      toast({ title: error.message || "Failed to update asset", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoading) {
+    return <div className="p-6 flex justify-center items-center h-[50vh] text-muted-foreground">Loading asset details...</div>;
+  }
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
@@ -87,14 +121,14 @@ export default function NewAssetPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight">Create New Asset</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Edit Asset</h1>
       </div>
 
       <Card>
         <form onSubmit={handleSubmit}>
           <CardHeader>
-            <CardTitle>Asset Details</CardTitle>
-            <CardDescription>Enter the information for the new physical or digital asset.</CardDescription>
+            <CardTitle>Update Details</CardTitle>
+            <CardDescription>Modify the information for this asset.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             
@@ -158,6 +192,20 @@ export default function NewAssetPage() {
                   placeholder="0.00"
                 />
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="available">Available</SelectItem>
+                    <SelectItem value="allocated">Allocated</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                    <SelectItem value="retired">Retired</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
           </CardContent>
@@ -166,7 +214,7 @@ export default function NewAssetPage() {
               <Button type="button" variant="outline">Cancel</Button>
             </Link>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Create Asset"}
+              {isSubmitting ? "Saving..." : "Update Asset"}
             </Button>
           </CardFooter>
         </form>
