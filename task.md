@@ -17,21 +17,21 @@
 - [ ] Set up global notifications component and activity log views
 
 ## [ ] Branch 2: `feature/assets-allocations-transfers` (Member 2)
-- [ ] Implement `/api/assets` endpoints (GET assets with filters, POST assets generating `AF-XXXX` tag)
+- [x] Implement `/api/assets` endpoints (GET assets with filters, POST assets generating `AF-XXXX` tag)
 - [ ] Build Assets Registration modal/form with serial, photo details, and custom attributes JSON
 - [ ] Implement Assets Directory list with rich filtering (by tag, serial number, category, status)
-- [ ] Build `/api/assets/:id` history timeline query returning allocations and maintenance entries
+- [x] Build `/api/assets/:id` history timeline query returning allocations and maintenance entries
 - [ ] Build Assets details timeline tracking registration, allocation, and repair events
-- [ ] Implement Allocations creation API (`/api/allocations`) and return API (`/api/allocations/:id/return`)
-- [ ] Create duplicate allocation conflict checker logic on both frontend and backend
-- [ ] Build peer-to-peer asset transfer endpoints (`/api/transfers`, `/api/transfers/:id/approve`) and dashboard
+- [x] Implement Allocations creation API (`/api/allocations`) and return API (`/api/allocations/:id/return`)
+- [x] Create duplicate allocation conflict checker logic on both frontend and backend
+- [x] Build peer-to-peer asset transfer endpoints (`/api/transfers`, `/api/transfers/:id/approve`) and dashboard
 
 ## [ ] Branch 3: `feature/bookings-maintenance-audits` (Member 3)
-- [ ] Implement Resource Bookings endpoints with overlap slot validations in SQL
-- [ ] Implement Resource Bookings interactive scheduler calendar view
-- [ ] Implement Maintenance request API (`/api/maintenance`) and manager approvals status-toggling API
-- [ ] Develop maintenance ticket status board (Workflow: Pending -> Approved -> Tech Assigned -> In Progress -> Resolved)
-- [ ] Build structured Audit Cycle endpoints (`/api/audits`, `/api/audits/:id/items`, `/api/audits/:id/close`)
-- [ ] Develop Auditor checklist tracking Verify, Missing, and Damaged items
-- [ ] Implement auto-reconcile on Audit cycle closure (Lost/Maintenance transitions)
-- [ ] Implement Analytics & Reports charts (utilization trends, heatmaps, CSV exports)
+- `[x]` Implement Resource Bookings endpoints with overlap slot validations in SQL
+- `[x]` Implement Resource Bookings interactive scheduler calendar view
+- `[x]` Implement Maintenance request API (`/api/maintenance`) and manager approvals status-toggling API
+- `[x]` Develop maintenance ticket status board (Workflow: Pending -> Approved -> Tech Assigned -> In Progress -> Resolved)
+- `[x]` Build structured Audit Cycle endpoints (`/api/audits`, `/api/audits/:id/items`, `/api/audits/:id/close`)
+- `[x]` Develop Auditor checklist tracking Verify, Missing, and Damaged items
+- `[x]` Implement auto-reconcile on Audit cycle closure (Lost/Maintenance transitions)
+- `[x]` Implement Analytics & Reports charts (utilization trends, heatmaps, CSV exports)
